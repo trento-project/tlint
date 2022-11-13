@@ -123,3 +123,9 @@ pub enum Predicate {
     Bool,
     U64,
 }
+
+#[derive(Debug)]
+pub struct ParsingError {
+    pub check_id: String,
+    pub error: String,
+}

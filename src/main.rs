@@ -9,6 +9,8 @@ use std::process;
 pub mod dsl;
 
 use dsl::parsing;
+use dsl::types::ParsingError;
+use dsl::validation;
 use dsl::validation::Validate;
 
 #[derive(Parser, Debug)]
@@ -41,17 +43,29 @@ fn main() {
 
     let yaml_documents = parsing::string_to_yaml(input);
 
-    let checks = parsing::get_checks(&yaml_documents[0]);
+    let (checks, parsing_errors): (Vec<_>, Vec<_>) = parsing::get_checks(&yaml_documents[0])
+        .into_iter()
+        .partition(Result::is_ok);
 
     let (_, validation_errors): (Vec<_>, Vec<_>) = checks
-        .iter()
+        .into_iter()
+        .map(Result::unwrap)
         .map(|check| check.validate())
         .partition(Result::is_ok);
 
-    let exit_code = match validation_errors.is_empty() {
+    let exit_code = match parsing_errors.is_empty() && validation_errors.is_empty() {
         true => 0,
         false => 1,
     };
+
+    let _ = parsing_errors
+        .into_iter()
+        .map(Result::unwrap_err)
+        .for_each(|errors| {
+            errors.iter().for_each(|ParsingError { check_id, error }| {
+                println!("{} - {}", validation::error_header(&check_id), error)
+            })
+        });
 
     let _ = validation_errors
         .into_iter()

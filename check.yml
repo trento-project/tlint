@@ -13,7 +13,7 @@ check_corosync_token_timeout:
     -
       name: corosync_token_timeout
       gatherer: corosync
-      arguments: totem.token
+      argument: totem.token
     -
       name: some_other_fact_useful_for_this_check
       gatherer: another_reference_to_a_gatherer

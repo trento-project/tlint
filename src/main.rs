@@ -8,6 +8,7 @@ use std::process;
 
 pub mod dsl;
 
+use dsl::display;
 use dsl::parsing;
 use dsl::types::ParsingError;
 use dsl::validation;
@@ -26,8 +27,10 @@ enum Commands {
         #[clap(short, long, value_parser)]
         file: Option<String>,
     },
-    #[clap(arg_required_else_help = true)]
-    Show { file: Option<String> },
+    Show {
+        #[clap(short, long, value_parser)]
+        file: Option<String>,
+    },
 }
 
 fn get_input(file: Option<String>) -> String {
@@ -82,10 +85,15 @@ fn main() {
 
             process::exit(exit_code);
         }
+
         Commands::Show { file } => {
             let input = get_input(file);
             let yaml_documents = parsing::string_to_yaml(input);
-            let (checks, parsing_errors) = parsing::parse_checks(&yaml_documents[0]);
+            let (checks, _) = parsing::parse_checks(&yaml_documents[0]);
+
+            checks.into_iter().for_each(|check| {
+                display::print_check(check);
+            })
         }
     }
 }

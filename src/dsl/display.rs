@@ -2,7 +2,13 @@ use super::types::Check;
 use colored::*;
 
 fn check_header(head: &str) -> String {
-    format!("  {}  ", head).on_green().black().to_string()
+    let padding = 16 - head.len() - 4;
+    let mut header = format!("  {}  ", head);
+    for _ in 0..padding {
+        header.push(' ');
+    }
+
+    header.on_green().black().to_string()
 }
 
 pub fn print_check(check: Check) -> () {

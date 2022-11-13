@@ -9,7 +9,6 @@ use std::process;
 pub mod dsl;
 
 use dsl::display;
-use dsl::parsing;
 use dsl::types::{Check, ValidationError};
 use dsl::validation;
 
@@ -85,12 +84,10 @@ fn main() -> Result<(), serde_yaml::Error> {
 
         Commands::Show { file } => {
             let input = get_input(file);
-            let yaml_documents = parsing::string_to_yaml(input);
-            let (checks, _) = parsing::parse_checks(&yaml_documents[0]);
 
-            checks.into_iter().for_each(|check| {
-                display::print_check(check);
-            })
+            let check: Check = serde_yaml::from_str(&input)?;
+
+            display::print_check(check);
         }
     }
 

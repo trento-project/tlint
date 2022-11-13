@@ -18,13 +18,13 @@ pub fn print_check(check: Check) -> () {
     println!("\n{}", check_header("Remediation"));
     println!("  {}", check.remediation.replace("\n", "\n  "));
     println!("\n{}", check_header("Facts"));
-    
+
     check.facts.into_iter().for_each(|fact| {
-        println!("\n  {}  {}", check_header("Name"), fact.fact_name);
+        println!("\n  {}  {}", check_header("Name"), fact.name);
         println!("  {}  {}", check_header("Gatherer"), fact.gatherer);
     });
-    
+
     println!("\n{}", check_header("Expectations"));
-    
+
     ()
 }

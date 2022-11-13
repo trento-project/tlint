@@ -1,7 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 use super::validation;
 use super::validation::Validate;
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Check {
     pub id: String,
     pub name: String,
@@ -74,19 +76,18 @@ impl Validate for Check {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FactDeclaration {
-    pub fact_name: String,
+    pub name: String,
     pub gatherer: String,
-    pub arguments: Vec<String>,
+    pub argument: String,
 }
 
 impl Validate for FactDeclaration {
     fn validate(&self) -> Result<(), Vec<String>> {
         let outcomes = vec![
-            validation::string_not_empty(&self.fact_name, "fact_name"),
+            validation::string_not_empty(&self.name, "fact_name"),
             validation::string_not_empty(&self.gatherer, "gatherer"),
-            validation::list_not_empty(&self.arguments, "arguments"),
         ];
 
         let (_, failed_validations): (Vec<_>, Vec<_>) =
@@ -110,11 +111,10 @@ pub struct Fact {
     pub content: String,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Expectation {
     pub name: String,
-    pub variable: String,
-    pub predicate: Predicate,
+    pub expect: String,
 }
 
 #[derive(Debug)]
@@ -128,4 +128,11 @@ pub enum Predicate {
 pub struct ParsingError {
     pub check_id: String,
     pub error: String,
+}
+
+#[derive(Debug)]
+pub struct ValidationError {
+    pub check_id: String,
+    pub error: String,
+    pub instance_path: String,
 }

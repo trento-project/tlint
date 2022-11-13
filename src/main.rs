@@ -1,6 +1,9 @@
 extern crate corosync_config_parser;
 
 use clap::{Parser, Subcommand};
+use jsonschema::{Draft, JSONSchema};
+use serde_json::json;
+use serde_yaml;
 use std::fs::File;
 use std::io;
 use std::io::Read;
@@ -10,9 +13,7 @@ pub mod dsl;
 
 use dsl::display;
 use dsl::parsing;
-use dsl::types::ParsingError;
-use dsl::validation;
-use dsl::validation::Validate;
+use dsl::types::{Check, ValidationError};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -49,41 +50,185 @@ fn get_input(file: Option<String>) -> String {
     payload
 }
 
-fn main() {
+fn validate(json_check: &serde_json::Value, check_id: &str) -> Result<(), Vec<ValidationError>> {
+    let schema = json!(
+        {
+            "$schema": "http://json-schema.org/draft-06/schema#",
+            "$ref": "#/definitions/Welcome4",
+            "definitions": {
+                "Welcome4": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "expectations": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Expectation"
+                            }
+                        },
+                        "facts": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Fact"
+                            }
+                        },
+                        "group": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "remediation": {
+                            "type": "string"
+                        },
+                        "values": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Value"
+                            }
+                        }
+                    },
+                    "required": [
+                        "description",
+                        "expectations",
+                        "facts",
+                        "group",
+                        "id",
+                        "name",
+                        "remediation",
+                        "values"
+                    ],
+                    "title": "Welcome4"
+                },
+                "Expectation": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "expect": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "expect",
+                        "name"
+                    ],
+                    "title": "Expectation"
+                },
+                "Fact": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "argument": {
+                            "type": "string"
+                        },
+                        "gatherer": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "argument",
+                        "gatherer",
+                        "name"
+                    ],
+                    "title": "Fact"
+                },
+                "Value": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "conditions": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/Condition"
+                            }
+                        },
+                        "default": {
+                            "type": "integer"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "conditions",
+                        "default",
+                        "name"
+                    ],
+                    "title": "Value"
+                },
+                "Condition": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "integer"
+                        },
+                        "when": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "when"
+                    ],
+                    "title": "Condition"
+                }
+            }
+        }
+    );
+
+    let compiled_schema = JSONSchema::options()
+        .with_draft(Draft::Draft7)
+        .compile(&schema)
+        .expect("A valid schema");
+
+    let validation_result = match compiled_schema.validate(json_check) {
+        Ok(_) => Ok(()),
+        Err(errors) => {
+            let validation_errors = errors
+                .map(|error| ValidationError {
+                    check_id: check_id.to_string(),
+                    error: error.to_string(),
+                    instance_path: error.instance_path.to_string(),
+                })
+                .collect();
+            Err(validation_errors)
+        }
+    };
+
+    validation_result
+}
+
+fn main() -> Result<(), serde_yaml::Error> {
     let args = Args::parse();
 
     match args.command {
         Commands::Lint { file } => {
             let input = get_input(file);
 
-            let yaml_documents = parsing::string_to_yaml(input);
+            let json_value: serde_json::Value = serde_yaml::from_str(&input)?;
 
-            let (checks, parsing_errors) = parsing::parse_checks(&yaml_documents[0]);
+            let check: Check = serde_yaml::from_str(&input)?;
 
-            let (_, validation_errors): (Vec<_>, Vec<_>) = checks
-                .into_iter()
-                .map(|check| check.validate())
-                .partition(Result::is_ok);
+            let check_id = check.id;
 
-            let exit_code = match parsing_errors.is_empty() && validation_errors.is_empty() {
-                true => 0,
-                false => 1,
-            };
+            println!("{}", serde_json::to_string_pretty(&json_value).unwrap());
 
-            let _ = parsing_errors
-                .into_iter()
-                .for_each(|ParsingError { check_id, error }| {
-                    println!("{} - {}", validation::error_header(&check_id), error);
-                });
+            let validation_result = validate(&json_value, &check_id);
 
-            let _ = validation_errors
-                .into_iter()
-                .map(Result::unwrap_err)
-                .for_each(|errors| {
-                    errors.iter().for_each(|error| println!("{}", error));
-                });
-
-            process::exit(exit_code);
+            process::exit(0);
         }
 
         Commands::Show { file } => {
@@ -96,4 +241,6 @@ fn main() {
             })
         }
     }
+
+    Ok(())
 }

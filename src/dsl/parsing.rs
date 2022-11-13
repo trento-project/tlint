@@ -174,9 +174,9 @@ fn fact_declarations(yaml_hash: &Hash) -> Result<Vec<FactDeclaration>, Vec<Parsi
 
             match errors.is_empty() {
                 true => Ok(FactDeclaration {
-                    fact_name: fact_name,
+                    name: fact_name,
                     gatherer: gatherer,
-                    arguments: vec![argument],
+                    argument: argument,
                 }),
                 false => Err(errors),
             }

@@ -11,7 +11,26 @@ pub fn error_header(head: &str) -> String {
 pub fn validate(
     json_check: &serde_json::Value,
     check_id: &str,
+    schema: &JSONSchema,
 ) -> Result<(), Vec<ValidationError>> {
+    let validation_result = match schema.validate(json_check) {
+        Ok(_) => Ok(()),
+        Err(errors) => {
+            let validation_errors = errors
+                .map(|error| ValidationError {
+                    check_id: check_id.to_string(),
+                    error: error.to_string(),
+                    instance_path: error.instance_path.to_string(),
+                })
+                .collect();
+            Err(validation_errors)
+        }
+    };
+
+    validation_result
+}
+
+pub fn get_json_schema() -> JSONSchema {
     let schema = json!(
         {
             "$schema": "http://json-schema.org/draft-06/schema#",
@@ -155,19 +174,5 @@ pub fn validate(
         .compile(&schema)
         .expect("A valid schema");
 
-    let validation_result = match compiled_schema.validate(json_check) {
-        Ok(_) => Ok(()),
-        Err(errors) => {
-            let validation_errors = errors
-                .map(|error| ValidationError {
-                    check_id: check_id.to_string(),
-                    error: error.to_string(),
-                    instance_path: error.instance_path.to_string(),
-                })
-                .collect();
-            Err(validation_errors)
-        }
-    };
-
-    validation_result
+    compiled_schema
 }

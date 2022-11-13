@@ -53,14 +53,18 @@ fn main() -> Result<(), serde_yaml::Error> {
     match args.command {
         Commands::Lint { file } => {
             let input = get_input(file);
-
             let json_value: serde_json::Value = serde_yaml::from_str(&input)?;
+            let deserialization_result = serde_yaml::from_str::<Check>(&input);
 
-            let check: Check = serde_yaml::from_str(&input)?;
+            if let Err(ref error) = deserialization_result {
+                println!("{} - {}", validation::error_header("Parse error"), error);
+                process::exit(1)
+            }
 
+            let check = deserialization_result.unwrap();
             let check_id = check.id;
-
-            let validation_result = validation::validate(&json_value, &check_id);
+            let json_schema = validation::get_json_schema();
+            let validation_result = validation::validate(&json_value, &check_id, &json_schema);
 
             let exit_code = match validation_result {
                 Ok(_) => 0,

@@ -80,6 +80,13 @@ fn main() -> Result<(), serde_yaml::Error> {
                     let mut parsing_errors = vec![];
                     let (_, validation_errors): (Vec<_>, Vec<_>) = files
                         .into_iter()
+                        .filter(|check_path| {
+                            let extension = Path::new(check_path).extension();
+                            match extension {
+                                Some(s) => s == "yml" || s == "yaml",
+                                None => false,
+                            }
+                        })
                         .map(|check_path| {
                             let input = get_input(Some(check_path));
                             let json_value: serde_json::Value = serde_yaml::from_str(&input)

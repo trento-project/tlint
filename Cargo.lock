@@ -747,20 +747,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rashomon"
-version = "0.1.0"
-dependencies = [
- "clap 3.2.6",
- "colored",
- "corosync-config-parser",
- "jsonschema",
- "serde",
- "serde_json",
- "serde_yaml",
- "yaml-rust",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -987,6 +973,20 @@ name = "tinyvec_macros"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
+
+[[package]]
+name = "tlint"
+version = "0.9.0"
+dependencies = [
+ "clap 3.2.6",
+ "colored",
+ "corosync-config-parser",
+ "jsonschema",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "yaml-rust",
+]
 
 [[package]]
 name = "tokio"

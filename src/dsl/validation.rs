@@ -31,7 +31,7 @@ pub fn validate(
 }
 
 pub fn get_json_schema() -> JSONSchema {
-    let value = serde_json::from_str(&SCHEMA).unwrap();
+    let value = serde_json::from_str(SCHEMA).unwrap();
 
     let compiled_schema = JSONSchema::options()
         .with_draft(Draft::Draft7)

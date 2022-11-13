@@ -22,8 +22,6 @@ pub fn parse_checks(yaml_document: &Yaml) -> (Vec<Check>, Vec<ParsingError>) {
     )
 }
 
-pub fn validate_checks(checks: Vec<Check>) -> () {}
-
 pub fn get_checks(yaml_document: &Yaml) -> Vec<Result<Check, Vec<ParsingError>>> {
     yaml_document
         .as_hash()

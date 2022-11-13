@@ -1,9 +1,11 @@
 extern crate corosync_config_parser;
 
 use clap::{Parser, Subcommand};
+use std::fs;
 use std::fs::File;
 use std::io;
 use std::io::Read;
+use std::path::Path;
 use std::process;
 
 pub mod dsl;
@@ -47,44 +49,121 @@ fn get_input(file: Option<String>) -> String {
     payload
 }
 
+fn is_directory(arg_path: Option<String>) -> bool {
+    match arg_path {
+        Some(path) => Path::new(&path).is_dir(),
+        None => false,
+    }
+}
+
+fn scan_directory(directory: &str) -> Result<Vec<String>, std::io::Error> {
+    let files_list = fs::read_dir(directory)?
+        .filter_map(|file| {
+            file.ok().and_then(|e| match e.path().is_file() {
+                true => e.path().to_str().map(|s| s.to_string()),
+                false => None,
+            })
+        })
+        .collect();
+    Ok(files_list)
+}
+
 fn main() -> Result<(), serde_yaml::Error> {
     let args = Args::parse();
 
     match args.command {
-        Commands::Lint { file } => {
-            let input = get_input(file);
-            let json_value: serde_json::Value = serde_yaml::from_str(&input)?;
-            let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        Commands::Lint { file } => match is_directory(file.clone()) {
+            true => {
+                if let Some(directory) = file {
+                    let json_schema = validation::get_json_schema();
+                    let files = scan_directory(&directory).expect("Unable to scan directory");
+                    let mut parsing_errors = vec![];
+                    let (_, validation_errors): (Vec<_>, Vec<_>) = files
+                        .into_iter()
+                        .map(|check_path| {
+                            let input = get_input(Some(check_path));
+                            let json_value: serde_json::Value = serde_yaml::from_str(&input)
+                                .expect("Unable to parse the YAML into a JSON payload");
+                            let deserialization_result = serde_yaml::from_str::<Check>(&input);
 
-            if let Err(ref error) = deserialization_result {
-                println!("{} - {}", validation::error_header("Parse error"), error);
-                process::exit(1)
-            }
+                            match deserialization_result {
+                                Err(ref error) => {
+                                    parsing_errors.push(error.to_string());
+                                    Ok(())
+                                }
+                                Ok(check) => {
+                                    let check_id = check.id;
+                                    let validation_result =
+                                        validation::validate(&json_value, &check_id, &json_schema);
+                                    validation_result
+                                }
+                            }
+                        })
+                        .partition(Result::is_ok);
 
-            let check = deserialization_result.unwrap();
-            let check_id = check.id;
-            let json_schema = validation::get_json_schema();
-            let validation_result = validation::validate(&json_value, &check_id, &json_schema);
+                    let exit_code = match parsing_errors.is_empty() && validation_errors.is_empty()
+                    {
+                        true => 0,
+                        false => 1,
+                    };
 
-            let exit_code = match validation_result {
-                Ok(_) => 0,
-                Err(validation_errors) => {
-                    validation_errors.iter().for_each(
-                        |ValidationError {
-                             check_id,
-                             error,
-                             instance_path,
-                         }| {
-                            println!("{} - {}", validation::error_header(&check_id), error);
-                            println!("  path: {}\n", instance_path);
-                        },
-                    );
-                    1
+                    for error in parsing_errors {
+                        println!("{} - {}", validation::error_header("Parse error"), error);
+                    }
+
+                    validation_errors
+                        .into_iter()
+                        .map(Result::unwrap_err)
+                        .flatten()
+                        .for_each(
+                            |ValidationError {
+                                 check_id,
+                                 error,
+                                 instance_path,
+                             }| {
+                                println!("{} - {}", validation::error_header(&check_id), error);
+                                println!("  path: {}\n", instance_path);
+                            },
+                        );
+
+                    process::exit(exit_code);
                 }
-            };
+            }
+            false => {
+                let input = get_input(file);
+                let json_value: serde_json::Value = serde_yaml::from_str(&input)?;
+                let deserialization_result = serde_yaml::from_str::<Check>(&input);
 
-            process::exit(exit_code);
-        }
+                if let Err(ref error) = deserialization_result {
+                    println!("{} - {}", validation::error_header("Parse error"), error);
+                    process::exit(1)
+                }
+
+                let check = deserialization_result.unwrap();
+                let check_id = check.id;
+                let json_schema = validation::get_json_schema();
+                let validation_result = validation::validate(&json_value, &check_id, &json_schema);
+
+                let exit_code = match validation_result {
+                    Ok(_) => 0,
+                    Err(validation_errors) => {
+                        validation_errors.iter().for_each(
+                            |ValidationError {
+                                 check_id,
+                                 error,
+                                 instance_path,
+                             }| {
+                                println!("{} - {}", validation::error_header(&check_id), error);
+                                println!("  path: {}\n", instance_path);
+                            },
+                        );
+                        1
+                    }
+                };
+
+                process::exit(exit_code);
+            }
+        },
 
         Commands::Show { file } => {
             let input = get_input(file);

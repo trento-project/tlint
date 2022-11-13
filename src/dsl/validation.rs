@@ -2,7 +2,7 @@ use colored::*;
 use jsonschema::{Draft, JSONSchema};
 use serde_json::json;
 
-use crate::dsl::types::ValidationError;
+use super::types::ValidationError;
 
 pub fn error_header(head: &str) -> String {
     format!("  {}  ", head).on_red().black().to_string()

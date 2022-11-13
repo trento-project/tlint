@@ -7,6 +7,23 @@ pub fn string_to_yaml(input: String) -> Vec<Yaml> {
     YamlLoader::load_from_str(&input).expect("Unable to parse YAML content")
 }
 
+pub fn parse_checks(yaml_document: &Yaml) -> (Vec<Check>, Vec<ParsingError>) {
+    let (parser_checks, parsing_errors): (Vec<_>, Vec<_>) = get_checks(&yaml_document)
+        .into_iter()
+        .partition(Result::is_ok);
+
+    (
+        parser_checks.into_iter().map(Result::unwrap).collect(),
+        parsing_errors
+            .into_iter()
+            .map(Result::unwrap_err)
+            .flatten()
+            .collect(),
+    )
+}
+
+pub fn validate_checks(checks: Vec<Check>) -> () {}
+
 pub fn get_checks(yaml_document: &Yaml) -> Vec<Result<Check, Vec<ParsingError>>> {
     yaml_document
         .as_hash()

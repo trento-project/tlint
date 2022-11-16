@@ -9,6 +9,7 @@ FROM registry.suse.com/bci/rust:latest
 
 WORKDIR /home/tlint/
 COPY --from=builder /home/tlint/target/release/tlint .
+RUN zypper in -y tar
 WORKDIR /data
 VOLUME ["/data"]
 ENTRYPOINT ["/home/tlint/tlint"]

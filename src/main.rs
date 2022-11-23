@@ -1,6 +1,7 @@
 extern crate corosync_config_parser;
 
 use clap::{Parser, Subcommand};
+use rhai::Engine;
 use std::fs;
 use std::fs::File;
 use std::io;
@@ -70,6 +71,7 @@ fn scan_directory(directory: &str) -> Result<Vec<String>, std::io::Error> {
 
 fn main() -> Result<(), serde_yaml::Error> {
     let args = Args::parse();
+    let engine = Engine::new();
 
     match args.command {
         Commands::Lint { file } => match is_directory(file.clone()) {
@@ -100,8 +102,12 @@ fn main() -> Result<(), serde_yaml::Error> {
                                 }
                                 Ok(check) => {
                                     let check_id = check.id;
-                                    let validation_result =
-                                        validation::validate(&json_value, &check_id, &json_schema);
+                                    let validation_result = validation::validate(
+                                        &json_value,
+                                        &check_id,
+                                        &json_schema,
+                                        &engine,
+                                    );
                                     validation_result
                                 }
                             }
@@ -149,7 +155,8 @@ fn main() -> Result<(), serde_yaml::Error> {
                 let check = deserialization_result.unwrap();
                 let check_id = check.id;
                 let json_schema = validation::get_json_schema();
-                let validation_result = validation::validate(&json_value, &check_id, &json_schema);
+                let validation_result =
+                    validation::validate(&json_value, &check_id, &json_schema, &engine);
 
                 let exit_code = match validation_result {
                     Ok(_) => 0,

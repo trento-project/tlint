@@ -2,6 +2,7 @@ use super::types::ValidationError;
 use colored::*;
 use jsonschema::{Draft, JSONSchema};
 use rhai::Engine;
+use serde_json::json;
 
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
 
@@ -36,9 +37,9 @@ pub fn validate(
 
     let (_, expression_errors): (Vec<_>, Vec<_>) = json_check
         .get("expectations")
-        .unwrap()
+        .unwrap_or(&json!([]))
         .as_array()
-        .unwrap()
+        .unwrap_or(&Vec::new())
         .iter()
         .map(|value| {
             let expect = value.get("expect").unwrap().as_str().unwrap();

@@ -42,8 +42,16 @@ pub fn validate(
         .unwrap_or(&Vec::new())
         .iter()
         .map(|value| {
-            let expect = value.get("expect").unwrap().as_str().unwrap();
-            engine.compile(expect)
+            let expect = value.get("expect");
+            let expect_same = value.get("expect_same");
+
+            let expectation_expression = if expect.is_some() {
+                expect.unwrap().as_str().unwrap()
+            } else {
+                expect_same.unwrap().as_str().unwrap()
+            };
+
+            engine.compile(expectation_expression)
         })
         .partition(Result::is_ok);
 
@@ -170,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn validate_invalid_expectations_check() {
+    fn validate_invalid_expect_expectation_check() {
         let input = r#"
             id: 156F64
             name: Corosync configuration file
@@ -197,6 +205,50 @@ mod tests {
             expectations:
               - name: timeout
                 expect: kekw?
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
+        assert_eq!(validation_errors[0].check_id, "156F64");
+        assert_eq!(
+            validation_errors[0].error,
+            "Unknown operator: '?' (line 1, position 5)"
+        );
+        assert_eq!(validation_errors[0].instance_path, "");
+    }
+
+    #[test]
+    fn validate_invalid_expect_same_expectation_check() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+                argument: totem.token
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect_same: kekw?
         "#;
 
         let engine = Engine::new();

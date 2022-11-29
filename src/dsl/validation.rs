@@ -2,7 +2,7 @@ use super::types::ValidationError;
 use colored::*;
 use jsonschema::{Draft, JSONSchema};
 
-const SCHEMA: &str = include_str!("../../schema.json");
+const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
 
 pub fn error_header(head: &str) -> String {
     format!("  {}  ", head).on_red().black().to_string()

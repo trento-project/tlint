@@ -35,7 +35,7 @@ pub fn validate(
         Err(errors) => errors,
     };
 
-    let (_, expression_errors): (Vec<_>, Vec<_>) = json_check
+    let (_, expectation_expression_errors): (Vec<_>, Vec<_>) = json_check
         .get("expectations")
         .unwrap_or(&json!([]))
         .as_array()
@@ -55,19 +55,65 @@ pub fn validate(
         })
         .partition(Result::is_ok);
 
-    let mut expectation_errors: Vec<ValidationError> = expression_errors
+    let mut expectation_errors: Vec<ValidationError> = expectation_expression_errors
         .into_iter()
         .map(Result::unwrap_err)
-        .map(|error| ValidationError {
+        .enumerate()
+        .map(|(index, error)| ValidationError {
             check_id: check_id.to_string(),
             error: error.to_string(),
-            instance_path: "".to_string(),
+            instance_path: format!("/expectations/{:?}", index).to_string(),
         })
+        .collect();
+
+    let (_, values_expression_errors): (Vec<_>, Vec<_>) = json_check
+        .get("values")
+        .unwrap_or(&json!([]))
+        .as_array()
+        .unwrap_or(&Vec::new())
+        .iter()
+        .enumerate()
+        .flat_map(|(value_index, value)| {
+            let conditions_compilations_results: Vec<Result<_, _>> = value
+                .get("conditions")
+                .unwrap_or(&json!([]))
+                .as_array()
+                .unwrap_or(&Vec::new())
+                .iter()
+                .enumerate()
+                .map(|(condition_index, condition)| {
+                    let default_json_string = json!("");
+                    let when_expression = condition
+                        .get("when")
+                        .unwrap_or(&default_json_string)
+                        .as_str()
+                        .unwrap();
+                    engine
+                        .compile(when_expression)
+                        .map_err(|error| ValidationError {
+                            check_id: check_id.to_string(),
+                            error: error.to_string(),
+                            instance_path: format!(
+                                "/values/{:?}/conditions/{:?}",
+                                value_index, condition_index
+                            ),
+                        })
+                })
+                .collect();
+
+            conditions_compilations_results
+        })
+        .partition(Result::is_ok);
+
+    let mut values_errors = values_expression_errors
+        .into_iter()
+        .map(Result::unwrap_err)
         .collect();
 
     let mut errors = vec![];
     errors.append(&mut schema_validation_errors);
     errors.append(&mut expectation_errors);
+    errors.append(&mut values_errors);
 
     if errors.is_empty() {
         return Ok(());
@@ -218,11 +264,11 @@ mod tests {
             validation_errors[0].error,
             "Unknown operator: '?' (line 1, position 5)"
         );
-        assert_eq!(validation_errors[0].instance_path, "");
+        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
     }
 
     #[test]
-    fn validate_invalid_expect_same_expectation_check() {
+    fn validate_invalid_value() {
         let input = r#"
             id: 156F64
             name: Corosync configuration file
@@ -243,12 +289,12 @@ mod tests {
                 default: 5000
                 conditions:
                   - value: 30000
-                    when: env.provider == "azure" || env.provider == "aws"
+                    when: kekw?
                   - value: 20000
                     when: env.provider == "gcp"
             expectations:
               - name: timeout
-                expect_same: kekw?
+                expect: facts.corosync_token_timeout == values.expected_token_timeout 
         "#;
 
         let engine = Engine::new();
@@ -262,6 +308,6 @@ mod tests {
             validation_errors[0].error,
             "Unknown operator: '?' (line 1, position 5)"
         );
-        assert_eq!(validation_errors[0].instance_path, "");
+        assert_eq!(validation_errors[0].instance_path, "/values/0/conditions/0");
     }
 }

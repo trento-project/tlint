@@ -1,30 +1,44 @@
-# Rashomon
+# TLint
 Validation engine for Trento Checks DSL.
 
 ## Usage
 ```sh
 $ tlint -h
-tlint 0.9.0
+tlint 0.9.2
 
 USAGE:
-    tlint [OPTIONS]
+    tlint <SUBCOMMAND>
 
 OPTIONS:
-    -f, --file <FILE>    
-    -h, --help           Print help information
-    -V, --version        Print version information
+    -h, --help       Print help information
+    -V, --version    Print version information
+
+SUBCOMMANDS:
+    help    Print this message or the help of the given subcommand(s)
+    lint    
+    show    
+
 ```
 
 Rashomon accepts standard input (until EOF):
 
 ```sh
-$ cat check.yml | target/debug/tlint
+$ cat check.yml | target/debug/tlint lint
   156F64   - expectations - List must not be empty
 ```
 
 Or you can use the `-f` option to directly let Rashomon pick a file.
 
 ```sh
-$ tlint -f check.yml 
+$ tlint lint -f check.yml 
   156F64   - expectations - List must not be empty
+```
+
+## Running TLint over Docker
+Currently if you don't want to build TLint yourself the most convenient solution is to run TLint over Docker.
+
+You can put this useful alias into your shell configuration:
+
+```sh
+alias tlint='docker run --rm -i -v ${PWD}:/data ghcr.io/trento-project/tlint:latest'
 ```

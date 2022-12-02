@@ -19,7 +19,7 @@ values:
       - value: 30000
         when: env.provider == "azure" || env.provider == "aws"
       - value: 20000
-        whens: env.provider == "gcp"
+        when: env.provider == "gcp"
 expectations:
   - name: timeout
     expect: facts.corosync_token_timeout == values.expected_token_timeout

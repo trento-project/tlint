@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 clap = { version = "3.2.6", features = ["derive"] }
 colored = "2"
-corosync-config-parser = "0.1.0"
 jsonschema = "0.16.1"
 yaml-rust = "0.4"
 rhai = "1.11.0"

@@ -1,5 +1,3 @@
-extern crate corosync_config_parser;
-
 use clap::{Parser, Subcommand};
 use rhai::Engine;
 use std::fs;

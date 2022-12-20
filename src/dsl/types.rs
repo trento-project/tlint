@@ -27,7 +27,8 @@ pub struct Fact {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Expectation {
     pub name: String,
-    pub expect: String,
+    pub expect: Option<String>,
+    pub expect_same: Option<String>,
 }
 
 #[derive(Debug)]

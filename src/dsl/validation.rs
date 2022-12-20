@@ -136,6 +136,7 @@ pub fn get_json_schema() -> JSONSchema {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dsl::types::Check;
     use rhai::Engine;
     use serde_json;
 
@@ -309,5 +310,48 @@ mod tests {
             "Unknown operator: '?' (line 1, position 5)"
         );
         assert_eq!(validation_errors[0].instance_path, "/values/0/conditions/0");
+    }
+
+    #[test]
+    fn validate_check_with_gatherer_no_arguments() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect: facts.corosync_token_timeout == values.expected_token_timeout
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+
+        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
+
+        assert_eq!(validation_result.is_ok(), true);
+        assert_eq!(deserialization_result.is_ok(), true);
     }
 }

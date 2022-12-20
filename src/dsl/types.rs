@@ -15,7 +15,7 @@ pub struct Check {
 pub struct FactDeclaration {
     pub name: String,
     pub gatherer: String,
-    pub argument: String,
+    pub argument: Option<String>,
 }
 
 #[derive(Debug)]

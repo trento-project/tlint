@@ -5,6 +5,7 @@ pub struct Check {
     pub id: String,
     pub name: String,
     pub group: String,
+    pub when: Option<String>,
     pub description: String,
     pub remediation: String,
     pub facts: Vec<FactDeclaration>,

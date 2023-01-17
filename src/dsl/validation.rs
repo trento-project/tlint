@@ -197,6 +197,7 @@ mod tests {
               The value of the Corosync `token` timeout is not set as recommended.
               ## Remediation
               ...
+            premium: true
             facts:
               - name: corosync_token_timeout
                 gatherer: corosync.conf

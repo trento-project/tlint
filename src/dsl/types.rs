@@ -8,6 +8,7 @@ pub struct Check {
     pub when: Option<String>,
     pub description: String,
     pub remediation: String,
+    pub premium: Option<bool>,
     pub facts: Vec<FactDeclaration>,
     pub expectations: Vec<Expectation>,
 }

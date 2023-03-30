@@ -398,4 +398,48 @@ mod tests {
         assert_eq!(validation_result.is_ok(), true);
         assert_eq!(deserialization_result.is_ok(), true);
     }
+
+    #[test]
+    fn validate_check_failure_message() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect_same: facts.corosync_token_timeout == values.expected_token_timeout
+                failure_message: Expectation not met
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+
+        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
+
+        assert_eq!(validation_result.is_ok(), true);
+        assert_eq!(deserialization_result.is_ok(), true);
+    }
 }

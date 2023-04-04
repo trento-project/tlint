@@ -31,6 +31,7 @@ pub struct Expectation {
     pub name: String,
     pub expect: Option<String>,
     pub expect_same: Option<String>,
+    pub failure_message: Option<String>,
 }
 
 #[derive(Debug)]

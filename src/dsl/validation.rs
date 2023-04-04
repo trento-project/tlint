@@ -1,7 +1,7 @@
 use super::types::ValidationError;
 use colored::*;
 use jsonschema::{Draft, JSONSchema};
-use rhai::Engine;
+use rhai::{Engine, Expr, Stmt};
 use serde_json::json;
 
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
@@ -41,29 +41,49 @@ pub fn validate(
         .as_array()
         .unwrap_or(&Vec::new())
         .iter()
-        .map(|value| {
+        .enumerate()
+        .flat_map(|(index, value)| {
             let expect = value.get("expect");
             let expect_same = value.get("expect_same");
+            let failure_message = value.get("failure_message");
 
-            let expectation_expression = if expect.is_some() {
+            let is_expect = expect.is_some();
+
+            let expectation_expression = if is_expect {
                 expect.unwrap().as_str().unwrap()
             } else {
                 expect_same.unwrap().as_str().unwrap()
             };
 
-            engine.compile(expectation_expression)
+            let mut results = vec![];
+
+            match engine.compile(expectation_expression) {
+                Ok(_) => results.push(Ok(())),
+                Err(error) => results.push(Err(ValidationError {
+                    check_id: check_id.to_string(),
+                    error: error.to_string(),
+                    instance_path: format!("/expectations/{:?}", index).to_string(),
+                })),
+            }
+
+            if failure_message.is_some() {
+                let failure_message_expression = failure_message.unwrap().as_str().unwrap();
+                results.push(validate_string_expression(
+                    failure_message_expression,
+                    engine,
+                    check_id,
+                    index,
+                    is_expect,
+                ));
+            };
+
+            results
         })
         .partition(Result::is_ok);
 
     let mut expectation_errors: Vec<ValidationError> = expectation_expression_errors
         .into_iter()
         .map(Result::unwrap_err)
-        .enumerate()
-        .map(|(index, error)| ValidationError {
-            check_id: check_id.to_string(),
-            error: error.to_string(),
-            instance_path: format!("/expectations/{:?}", index).to_string(),
-        })
         .collect();
 
     let (_, values_expression_errors): (Vec<_>, Vec<_>) = json_check
@@ -120,6 +140,59 @@ pub fn validate(
     }
 
     Err(errors)
+}
+
+fn validate_string_expression(
+    expression: &str,
+    engine: &Engine,
+    check_id: &str,
+    index: usize,
+    allow_interpolated_strings: bool,
+) -> Result<(), ValidationError> {
+    match engine.compile(format!("`{}`", expression)) {
+        Ok(ast) => {
+            let statements = ast.statements();
+            if statements.len() > 1 {
+                return Err(ValidationError {
+                    check_id: check_id.to_string(),
+                    error: "Too many statements".to_string(),
+                    instance_path: format!("/expectations/{:?}", index).to_string(),
+                });
+            }
+
+            match &statements[0] {
+                Stmt::Expr(expression) => match **expression {
+                    Expr::StringConstant(_, _) => Ok(()),
+                    Expr::InterpolatedString(_, _) => {
+                        if !allow_interpolated_strings {
+                            Err(ValidationError {
+                                check_id: check_id.to_string(),
+                                error: "String interpolation is not allowed here".to_string(),
+                                instance_path: format!("/expectations/{:?}", index).to_string(),
+                            })
+                        } else {
+                            Ok(())
+                        }
+                    }
+                    _ => Err(ValidationError {
+                        check_id: check_id.to_string(),
+                        error: "Field has to be a string".to_string(),
+                        instance_path: format!("/expectations/{:?}", index).to_string(),
+                    }),
+                },
+                _ => Err(ValidationError {
+                    check_id: check_id.to_string(),
+                    error: "Field has to be an expression".to_string(),
+                    instance_path: format!("/expectations/{:?}", index).to_string(),
+                }),
+            }
+        }
+        Err(error) => Err(ValidationError {
+            check_id: check_id.to_string(),
+            error: error.to_string(),
+            instance_path: format!("/expectations/{:?}", index).to_string(),
+        }),
+    }
 }
 
 pub fn get_json_schema() -> JSONSchema {
@@ -396,6 +469,144 @@ mod tests {
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
         assert_eq!(validation_result.is_ok(), true);
+        assert_eq!(deserialization_result.is_ok(), true);
+    }
+
+    #[test]
+    fn validate_check_failure_message_expect_ok() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect: facts.corosync_token_timeout == values.expected_token_timeout
+                failure_message: Expectation not met ${facts.corosync_token_timeout}
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+
+        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
+
+        println!("{:?}", validation_result);
+
+        assert_eq!(validation_result.is_ok(), true);
+        assert_eq!(deserialization_result.is_ok(), true);
+    }
+
+    #[test]
+    fn validate_check_failure_message_expect_same_ok() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect_same: facts.corosync_token_timeout == values.expected_token_timeout
+                failure_message: Expectation not met
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+
+        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
+
+        println!("{:?}", validation_result);
+
+        assert_eq!(validation_result.is_ok(), true);
+        assert_eq!(deserialization_result.is_ok(), true);
+    }
+
+    #[test]
+    fn validate_check_failure_message_expect_same_invalid() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect_same: facts.corosync_token_timeout == values.expected_token_timeout
+                failure_message: Expectation not met ${facts.corosync_token_timeout}
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+
+        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
+
+        println!("{:?}", validation_result);
+
+        assert_eq!(validation_result.is_ok(), false);
         assert_eq!(deserialization_result.is_ok(), true);
     }
 }

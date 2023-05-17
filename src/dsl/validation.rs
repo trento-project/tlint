@@ -161,25 +161,27 @@ fn validate_string_expression(
             }
 
             match &statements[0] {
-                Stmt::Expr(expression) => match **expression {
-                    Expr::StringConstant(_, _) => Ok(()),
-                    Expr::InterpolatedString(_, _) => {
-                        if !allow_interpolated_strings {
-                            Err(ValidationError {
+                Stmt::Expr(expression) => {
+                    match **expression {
+                        Expr::StringConstant(_, _) => Ok(()),
+                        Expr::InterpolatedString(_, _) => {
+                            if !allow_interpolated_strings {
+                                Err(ValidationError {
                                 check_id: check_id.to_string(),
-                                error: "String interpolation is not allowed here".to_string(),
+                                error: "String interpolation is not allowed in expect_same statements".to_string(),
                                 instance_path: format!("/expectations/{:?}", index).to_string(),
                             })
-                        } else {
-                            Ok(())
+                            } else {
+                                Ok(())
+                            }
                         }
+                        _ => Err(ValidationError {
+                            check_id: check_id.to_string(),
+                            error: "Field has to be a string".to_string(),
+                            instance_path: format!("/expectations/{:?}", index).to_string(),
+                        }),
                     }
-                    _ => Err(ValidationError {
-                        check_id: check_id.to_string(),
-                        error: "Field has to be a string".to_string(),
-                        instance_path: format!("/expectations/{:?}", index).to_string(),
-                    }),
-                },
+                }
                 _ => Err(ValidationError {
                     check_id: check_id.to_string(),
                     error: "Field has to be an expression".to_string(),

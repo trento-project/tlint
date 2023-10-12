@@ -9,6 +9,11 @@ remediation: |
   ## Remediation
   ...
 premium: true
+metadata:
+  target_type: cluster
+  provider:
+    - aws
+    - azure
 facts:
   - name: corosync_token_timeout
     gatherer: corosync.conf

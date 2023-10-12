@@ -246,7 +246,7 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
         assert_eq!(validation_errors[0].check_id, "156F64");
@@ -271,6 +271,11 @@ mod tests {
               ## Remediation
               ...
             premium: true
+            metadata:
+              target_type: cluster
+              provider:
+                - aws
+                - azure
             facts:
               - name: corosync_token_timeout
                 gatherer: corosync.conf
@@ -291,11 +296,14 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
-        assert_eq!(validation_result.is_ok(), true);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
+
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -331,7 +339,7 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
         assert_eq!(validation_errors[0].check_id, "156F64");
@@ -375,7 +383,7 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
         assert_eq!(validation_errors[0].check_id, "156F64");
@@ -418,15 +426,15 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -461,15 +469,15 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -505,17 +513,17 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
         println!("{:?}", validation_result);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -551,17 +559,17 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
         println!("{:?}", validation_result);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -597,16 +605,68 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
         println!("{:?}", validation_result);
 
-        assert_eq!(validation_result.is_ok(), false);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_err());
+        assert!(deserialization_result.is_ok());
+    }
+
+    #[test]
+    fn validate_invalid_metadata() {
+        let input = r#"
+        id: 156F64
+        name: Corosync configuration file
+        group: Corosync
+        description: |
+          Corosync `token` timeout is set to expected value
+        remediation: |
+          ## Abstract
+          The value of the Corosync `token` timeout is not set as recommended.
+          ## Remediation
+          ...
+        premium: true
+        metadata:
+          "": empty
+          "  ": whitespace
+          target_type: cluster
+          provider:
+            - aws
+            - azure
+        facts:
+          - name: corosync_token_timeout
+            gatherer: corosync.conf
+            argument: totem.token
+        values:
+          - name: expected_token_timeout
+            default: 5000
+            conditions:
+              - value: 30000
+                when: env.provider == "azure" || env.provider == "aws"
+              - value: 20000
+                when: env.provider == "gcp"
+        expectations:
+          - name: timeout
+            expect: facts.corosync_token_timeout == values.expected_token_timeout
+    "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
+        assert_eq!(validation_errors[0].check_id, "156F64");
+        assert_eq!(
+            validation_errors[0].error,
+            "Additional properties are not allowed ('', '  ' were unexpected)"
+        );
+        assert_eq!(validation_errors[0].instance_path, "/metadata");
     }
 }

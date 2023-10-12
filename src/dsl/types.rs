@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -5,6 +7,7 @@ pub struct Check {
     pub id: String,
     pub name: String,
     pub group: String,
+    pub metadata: Option<HashMap<String, serde_json::Value>>,
     pub when: Option<String>,
     pub description: String,
     pub remediation: String,

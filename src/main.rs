@@ -100,13 +100,13 @@ fn main() -> Result<(), serde_yaml::Error> {
                                 }
                                 Ok(check) => {
                                     let check_id = check.id;
-                                    let validation_result = validation::validate(
+
+                                    validation::validate(
                                         &json_value,
                                         &check_id,
                                         &json_schema,
                                         &engine,
-                                    );
-                                    validation_result
+                                    )
                                 }
                             }
                         })
@@ -124,8 +124,7 @@ fn main() -> Result<(), serde_yaml::Error> {
 
                     validation_errors
                         .into_iter()
-                        .map(Result::unwrap_err)
-                        .flatten()
+                        .flat_map(Result::unwrap_err)
                         .for_each(
                             |ValidationError {
                                  check_id,
@@ -165,7 +164,7 @@ fn main() -> Result<(), serde_yaml::Error> {
                                  error,
                                  instance_path,
                              }| {
-                                println!("{} - {}", validation::error_header(&check_id), error);
+                                println!("{} - {}", validation::error_header(check_id), error);
                                 println!("  path: {}\n", instance_path);
                             },
                         );

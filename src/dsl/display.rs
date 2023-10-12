@@ -11,12 +11,12 @@ fn check_header(head: &str) -> String {
     header.on_green().black().to_string()
 }
 
-pub fn print_check(check: Check) -> () {
+pub fn print_check(check: Check) {
     println!("{}  {}", check_header(&check.id), check.name);
     println!("{}  {}", check_header("Group"), check.group);
     println!("{}  {}", check_header("Description"), check.description);
     println!("\n{}", check_header("Remediation"));
-    println!("  {}", check.remediation.replace("\n", "\n  "));
+    println!("  {}", check.remediation.replace('\n', "\n  "));
     println!("\n{}", check_header("Facts"));
 
     check.facts.into_iter().for_each(|fact| {
@@ -25,6 +25,4 @@ pub fn print_check(check: Check) -> () {
     });
 
     println!("\n{}", check_header("Expectations"));
-
-    ()
 }

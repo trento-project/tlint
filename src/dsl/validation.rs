@@ -246,7 +246,7 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
         assert_eq!(validation_errors[0].check_id, "156F64");
@@ -296,14 +296,14 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -339,7 +339,7 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
         assert_eq!(validation_errors[0].check_id, "156F64");
@@ -383,7 +383,7 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
         assert_eq!(validation_errors[0].check_id, "156F64");
@@ -426,15 +426,15 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -469,15 +469,15 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -513,17 +513,17 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
         println!("{:?}", validation_result);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -559,17 +559,17 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
         println!("{:?}", validation_result);
 
-        assert_eq!(validation_result.is_ok(), true);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -605,17 +605,17 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let deserialization_result = serde_yaml::from_str::<Check>(&input);
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
 
         let json_schema = get_json_schema();
         let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
 
         println!("{:?}", validation_result);
 
-        assert_eq!(validation_result.is_ok(), false);
-        assert_eq!(deserialization_result.is_ok(), true);
+        assert!(validation_result.is_err());
+        assert!(deserialization_result.is_ok());
     }
 
     #[test]
@@ -659,7 +659,7 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(&input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
         assert_eq!(validation_errors[0].check_id, "156F64");

@@ -23,7 +23,7 @@ fn validates_incorrect_check() -> Result<(), Box<dyn std::error::Error>> {
         .arg("tests/fixtures/invalid_check.yml");
     cmd.assert()
         .failure()
-        .stdout(predicate::str::contains("Parse error   - missing field `id`\n"));
+        .stdout(predicate::str::contains("  Parse error   - missing field `id` at line 2 column 1\n"));
 
     Ok(())
 }

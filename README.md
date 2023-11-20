@@ -15,22 +15,22 @@ OPTIONS:
 
 SUBCOMMANDS:
     help    Print this message or the help of the given subcommand(s)
-    lint    
-    show    
+    lint
+    show
 
 ```
 
-Rashomon accepts standard input (until EOF):
+TLint accepts standard input (until EOF):
 
 ```sh
 $ cat check.yml | target/debug/tlint lint
   156F64   - expectations - List must not be empty
 ```
 
-Or you can use the `-f` option to directly let Rashomon pick a file.
+Or you can use the `-f` option to directly let TLint pick a file.
 
 ```sh
-$ tlint lint -f check.yml 
+$ tlint lint -f check.yml
   156F64   - expectations - List must not be empty
 ```
 

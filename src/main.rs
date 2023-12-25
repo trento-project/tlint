@@ -7,11 +7,9 @@ use std::io::Read;
 use std::path::Path;
 use std::process;
 
-pub mod dsl;
-
-use dsl::display;
-use dsl::types::{Check, ValidationError};
-use dsl::validation;
+use tlint::dsl::display;
+use tlint::dsl::types::{Check, ValidationError};
+use tlint::dsl::validation;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]

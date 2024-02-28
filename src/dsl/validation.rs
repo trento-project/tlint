@@ -45,17 +45,24 @@ pub fn validate(
         .flat_map(|(index, value)| {
             let expect = value.get("expect");
             let expect_same = value.get("expect_same");
+            let expect_enum = value.get("expect_enum");
             let failure_message = value.get("failure_message");
 
             let is_expect = expect.is_some();
-
-            let expectation_expression = if is_expect {
-                expect.unwrap().as_str().unwrap()
-            } else {
-                expect_same.unwrap().as_str().unwrap()
-            };
+            let is_expect_same = expect_same.is_some();
+            let is_expect_enum = expect_enum.is_some();
 
             let mut results = vec![];
+
+            let expectation_expression = if is_expect {
+              expect.unwrap().as_str().unwrap()
+            } else if is_expect_same {
+              expect_same.unwrap().as_str().unwrap()
+            } else if is_expect_enum {
+              expect_enum.unwrap().as_str().unwrap()
+            } else {
+              ""
+            };
 
             match engine.compile(expectation_expression) {
                 Ok(_) => results.push(Ok(())),
@@ -64,7 +71,7 @@ pub fn validate(
                     error: error.to_string(),
                     instance_path: format!("/expectations/{:?}", index).to_string(),
                 })),
-            }
+            };
 
             if failure_message.is_some() {
                 let failure_message_expression = failure_message.unwrap().as_str().unwrap();
@@ -481,6 +488,53 @@ mod tests {
     }
 
     #[test]
+    fn validate_check_expect_enum() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_passing_value
+                default: 5000
+              - name: expected_warning_value
+                default: 3000
+            expectations:
+              - name: timeout
+                expect_enum: |
+                  if facts.corosync_token_timeout == values.expected_passing_value {
+                    "passing"
+                  } else if facts.corosync_token_timeout == values.expected_warning_value {
+                    "warning"
+                  } else {
+                    "critical"
+                  }
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
+
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
+
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
+    }
+
+    #[test]
     fn validate_check_failure_message_expect_ok() {
         let input = r#"
             id: 156F64
@@ -668,5 +722,45 @@ mod tests {
             "Additional properties are not allowed ('', '  ' were unexpected)"
         );
         assert_eq!(validation_errors[0].instance_path, "/metadata");
+    }
+
+    #[test]
+    fn validate_expression_missing() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+                argument: totem.token
+            values:
+              - name: expected_token_timeout
+                default: 5000
+
+            expectations:
+              - name: timeout
+                failure_message: critical!
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
+        assert_eq!(validation_errors[0].check_id, "156F64");
+        assert_eq!(
+            validation_errors[0].error,
+            "{\"failure_message\":\"critical!\",\"name\":\"timeout\"} is not valid under any of the given schemas"
+        );
+        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
     }
 }

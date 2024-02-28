@@ -47,6 +47,7 @@ pub fn validate(
             let expect_same = value.get("expect_same");
             let expect_enum = value.get("expect_enum");
             let failure_message = value.get("failure_message");
+            let warning_message = value.get("warning_message");
 
             let is_expect = expect.is_some();
             let is_expect_same = expect_same.is_some();
@@ -82,6 +83,23 @@ pub fn validate(
                     index,
                     is_expect,
                 ));
+            };
+
+            if warning_message.is_some() && !is_expect_enum {
+              results.push(Err(ValidationError {
+                check_id: check_id.to_string(),
+                error: "warning_message is only available for expect_enum expectations".to_string(),
+                instance_path: format!("/expectations/{:?}", index).to_string(),
+              }))
+            } else if warning_message.is_some() {
+              let warning_message_expression = warning_message.unwrap().as_str().unwrap();
+              results.push(validate_string_expression(
+                  warning_message_expression,
+                  engine,
+                  check_id,
+                  index,
+                  is_expect_enum,
+              ));
             };
 
             results
@@ -518,6 +536,8 @@ mod tests {
                   } else {
                     "critical"
                   }
+                failure_message: some critical message
+                warning_message: some warning message
         "#;
 
         let engine = Engine::new();
@@ -762,5 +782,105 @@ mod tests {
             "{\"failure_message\":\"critical!\",\"name\":\"timeout\"} is not valid under any of the given schemas"
         );
         assert_eq!(validation_errors[0].instance_path, "/expectations/0");
+    }
+
+    #[test]
+    fn validate_invalid_warning_message() {
+        let input = r#"
+        id: 156F64
+        name: Corosync configuration file
+        group: Corosync
+        description: |
+          Corosync `token` timeout is set to expected value
+        remediation: |
+          ## Abstract
+          The value of the Corosync `token` timeout is not set as recommended.
+          ## Remediation
+          ...
+        facts:
+          - name: corosync_token_timeout
+            gatherer: corosync.conf
+        values:
+          - name: expected_passing_value
+            default: 5000
+          - name: expected_warning_value
+            default: 3000
+        expectations:
+          - name: timeout
+            expect_enum: |
+              if facts.corosync_token_timeout == values.expected_passing_value {
+                "passing"
+              } else if facts.corosync_token_timeout == values.expected_warning_value {
+                "warning"
+              } else {
+                "critical"
+              }
+            failure_message: some critical message
+            warning_message: some warning message with ${facts.corosync_token_timeout
+    "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
+        assert_eq!(validation_errors[0].check_id, "156F64");
+        assert_eq!(
+            validation_errors[0].error,
+            "Open string is not terminated (line 1, position 58)"
+        );
+        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
+    }
+
+    #[test]
+    fn validate_warning_message_only_expect_enum() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+                argument: totem.token
+            values:
+              - name: expected_token_timeout
+                default: 5000
+
+            expectations:
+              - name: timeout
+                expect: facts.corosync_token_timeout == values.expected_token_timeout
+                warning_message: some message
+              - name: timeout_same
+                expect_same: facts.corosync_token_timeout
+                warning_message: some message
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
+        assert_eq!(validation_errors[0].check_id, "156F64");
+        assert_eq!(
+            validation_errors[0].error,
+            "warning_message is only available for expect_enum expectations"
+        );
+        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
+
+        assert_eq!(validation_errors[1].check_id, "156F64");
+        assert_eq!(
+            validation_errors[1].error,
+            "warning_message is only available for expect_enum expectations"
+        );
+        assert_eq!(validation_errors[1].instance_path, "/expectations/1");
     }
 }

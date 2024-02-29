@@ -53,8 +53,6 @@ pub fn validate(
             let is_expect_same = expect_same.is_some();
             let is_expect_enum = expect_enum.is_some();
 
-            let mut results = vec![];
-
             let expectation_expression = if is_expect {
               expect.unwrap().as_str().unwrap()
             } else if is_expect_same {
@@ -65,6 +63,8 @@ pub fn validate(
               ""
             };
 
+            let mut results = vec![];
+
             match engine.compile(expectation_expression) {
                 Ok(_) => results.push(Ok(())),
                 Err(error) => results.push(Err(ValidationError {
@@ -72,7 +72,7 @@ pub fn validate(
                     error: error.to_string(),
                     instance_path: format!("/expectations/{:?}", index).to_string(),
                 })),
-            };
+            }
 
             if failure_message.is_some() {
                 let failure_message_expression = failure_message.unwrap().as_str().unwrap();
@@ -83,14 +83,14 @@ pub fn validate(
                     index,
                     is_expect,
                 ));
-            };
+            }
 
             if warning_message.is_some() && !is_expect_enum {
               results.push(Err(ValidationError {
                 check_id: check_id.to_string(),
                 error: "warning_message is only available for expect_enum expectations".to_string(),
                 instance_path: format!("/expectations/{:?}", index).to_string(),
-              }))
+              }));
             } else if warning_message.is_some() {
               let warning_message_expression = warning_message.unwrap().as_str().unwrap();
               results.push(validate_string_expression(
@@ -100,7 +100,7 @@ pub fn validate(
                   index,
                   is_expect_enum,
               ));
-            };
+            }
 
             if is_expect_enum {
               results.append(&mut validate_expect_enum_content(
@@ -108,7 +108,7 @@ pub fn validate(
                 check_id,
                 index,
               ));
-            };
+            }
 
             results
         })

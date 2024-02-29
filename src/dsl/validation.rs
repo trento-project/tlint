@@ -102,6 +102,14 @@ pub fn validate(
               ));
             };
 
+            if is_expect_enum {
+              results.append(&mut validate_expect_enum_content(
+                expectation_expression,
+                check_id,
+                index,
+              ));
+            };
+
             results
         })
         .partition(Result::is_ok);
@@ -218,6 +226,32 @@ fn validate_string_expression(
             instance_path: format!("/expectations/{:?}", index).to_string(),
         }),
     }
+}
+
+fn validate_expect_enum_content(
+  expression: &str,
+  check_id: &str,
+  index: usize,
+) -> Vec<Result<(), ValidationError>> {
+  let mut results = vec![];
+
+  if !expression.contains("\"passing\"") {
+    results.push(Err(ValidationError {
+      check_id: check_id.to_string(),
+      error: "passing return value not found".to_string(),
+      instance_path: format!("/expectations/{:?}", index).to_string(),
+    }));
+  }
+
+  if !expression.contains("\"warning\"") {
+    results.push(Err(ValidationError {
+      check_id: check_id.to_string(),
+      error: "warning return value not found. Consider using `expect` expression if a warning return is not needed".to_string(),
+      instance_path: format!("/expectations/{:?}", index).to_string(),
+    }));
+  }
+
+  results
 }
 
 pub fn get_json_schema() -> JSONSchema {
@@ -882,5 +916,48 @@ mod tests {
             "warning_message is only available for expect_enum expectations"
         );
         assert_eq!(validation_errors[1].instance_path, "/expectations/1");
+    }
+
+    #[test]
+    fn validate_invalid_expect_enum_without_returns() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_passing_value
+                default: 5000
+            expectations:
+              - name: timeout
+                expect_enum: facts.corosync_token_timeout == values.expected_passing_value
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
+        assert_eq!(validation_errors[0].check_id, "156F64");
+        assert_eq!(
+            validation_errors[0].error,
+            "passing return value not found"
+        );
+        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
+        assert_eq!(
+          validation_errors[1].error,
+          "warning return value not found. Consider using `expect` expression if a warning return is not needed"
+      );
+      assert_eq!(validation_errors[1].instance_path, "/expectations/0");
     }
 }

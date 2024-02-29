@@ -4,7 +4,7 @@ Validation engine for Trento Checks DSL.
 ## Usage
 ```sh
 $ tlint -h
-tlint 0.9.2
+tlint 0.9.3
 
 USAGE:
     tlint <SUBCOMMAND>

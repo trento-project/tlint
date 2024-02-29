@@ -34,7 +34,9 @@ pub struct Expectation {
     pub name: String,
     pub expect: Option<String>,
     pub expect_same: Option<String>,
+    pub expect_enum: Option<String>,
     pub failure_message: Option<String>,
+    pub warning_message: Option<String>,
 }
 
 #[derive(Debug)]

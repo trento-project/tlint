@@ -81,7 +81,7 @@ pub fn validate(
                     engine,
                     check_id,
                     index,
-                    is_expect,
+                    is_expect || is_expect_enum,
                 ));
             }
 
@@ -662,6 +662,57 @@ mod tests {
               - name: timeout
                 expect_same: facts.corosync_token_timeout == values.expected_token_timeout
                 failure_message: Expectation not met
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
+
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156F64", &json_schema, &engine);
+
+        println!("{:?}", validation_result);
+
+        assert!(validation_result.is_ok());
+        assert!(deserialization_result.is_ok());
+    }
+
+    #[test]
+    fn validate_check_failure_and_warning_message_expect_enum_ok() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_passing_value
+                default: 5000
+              - name: expected_warning_value
+                default: 3000
+            expectations:
+              - name: timeout
+                expect_enum: |
+                  if facts.corosync_token_timeout == values.expected_passing_value {
+                    "passing"
+                  } else if facts.corosync_token_timeout == values.expected_warning_value {
+                    "warning"
+                  } else {
+                    "critical"
+                  }
+                failure_message: Expectation not met. Timeout value is ${facts.corosync_token_timeout}
+                warning_message: Warning! Timeout value is ${values.expected_warning_value}
         "#;
 
         let engine = Engine::new();

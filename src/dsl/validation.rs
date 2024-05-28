@@ -6,6 +6,40 @@ use serde_json::json;
 
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
 
+trait Validator {
+    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError>;
+}
+
+struct SchemaValidator<'a> {
+    schema: &'a JSONSchema,
+}
+
+impl<'a> Validator for SchemaValidator<'a> {
+    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError> {
+        validate_schema(json_check, check_id, self.schema)
+    }
+}
+
+struct ExpectationValidator<'a> {
+    engine: &'a Engine,
+}
+
+impl<'a> Validator for ExpectationValidator<'a> {
+    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError> {
+        validate_expectations(json_check, check_id, self.engine)
+    }
+}
+
+struct ValueValidator<'a> {
+    engine: &'a Engine,
+}
+
+impl<'a> Validator for ValueValidator<'a> {
+    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError> {
+        validate_values(json_check, check_id, self.engine)
+    }
+}
+
 fn validate_schema(
     json_check: &serde_json::Value,
     check_id: &str,
@@ -183,14 +217,16 @@ pub fn validate(
     schema: &JSONSchema,
     engine: &Engine,
 ) -> Result<(), Vec<ValidationError>> {
-    let schema_validation_errors = validate_schema(json_check, check_id, schema);
-    let expectation_errors = validate_expectations(json_check, check_id, engine);
-    let values_errors = validate_values(json_check, check_id, engine);
+    let schema_validator = SchemaValidator { schema };
+    let expectation_validator = ExpectationValidator { engine };
+    let value_validator = ValueValidator { engine };
 
-    let errors: Vec<ValidationError> = schema_validation_errors
-        .into_iter()
-        .chain(expectation_errors.into_iter())
-        .chain(values_errors.into_iter())
+    let validators: Vec<&dyn Validator> =
+        vec![&schema_validator, &expectation_validator, &value_validator];
+
+    let errors: Vec<ValidationError> = validators
+        .iter()
+        .flat_map(|validator| validator.validate(json_check, check_id))
         .collect();
 
     if errors.is_empty() {

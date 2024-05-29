@@ -13,6 +13,8 @@ use dsl::display;
 use dsl::types::{Check, ValidationError};
 use dsl::validation;
 
+pub mod validators;
+
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {

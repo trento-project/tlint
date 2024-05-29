@@ -1,8 +1,10 @@
-use super::types::ValidationError;
+use super::types::{ValidationError, Validator};
+use crate::validators::expectation_validator::ExpectationValidator;
+use crate::validators::schema_validator::SchemaValidator;
+use crate::validators::value_validator::ValueValidator;
 use colored::*;
 use jsonschema::{Draft, JSONSchema};
-use rhai::{Engine, Expr, Stmt};
-use serde_json::json;
+use rhai::Engine;
 
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
 
@@ -16,242 +18,23 @@ pub fn validate(
     schema: &JSONSchema,
     engine: &Engine,
 ) -> Result<(), Vec<ValidationError>> {
-    let validation_result = match schema.validate(json_check) {
-        Ok(_) => Ok(()),
-        Err(errors) => {
-            let validation_errors = errors
-                .map(|error| ValidationError {
-                    check_id: check_id.to_string(),
-                    error: error.to_string(),
-                    instance_path: error.instance_path.to_string(),
-                })
-                .collect();
-            Err(validation_errors)
-        }
-    };
+    let schema_validator = SchemaValidator { schema };
+    let expectation_validator = ExpectationValidator { engine };
+    let value_validator = ValueValidator { engine };
 
-    let mut schema_validation_errors = match validation_result {
-        Ok(_) => vec![],
-        Err(errors) => errors,
-    };
+    let validators: Vec<&dyn Validator> =
+        vec![&schema_validator, &expectation_validator, &value_validator];
 
-    let (_, expectation_expression_errors): (Vec<_>, Vec<_>) = json_check
-        .get("expectations")
-        .unwrap_or(&json!([]))
-        .as_array()
-        .unwrap_or(&Vec::new())
+    let errors: Vec<ValidationError> = validators
         .iter()
-        .enumerate()
-        .flat_map(|(index, value)| {
-            let expect = value.get("expect");
-            let expect_same = value.get("expect_same");
-            let expect_enum = value.get("expect_enum");
-            let failure_message = value.get("failure_message");
-            let warning_message = value.get("warning_message");
-
-            let is_expect = expect.is_some();
-            let is_expect_same = expect_same.is_some();
-            let is_expect_enum = expect_enum.is_some();
-
-            let expectation_expression = if is_expect {
-              expect.unwrap().as_str().unwrap()
-            } else if is_expect_same {
-              expect_same.unwrap().as_str().unwrap()
-            } else if is_expect_enum {
-              expect_enum.unwrap().as_str().unwrap()
-            } else {
-              ""
-            };
-
-            let mut results = vec![];
-
-            match engine.compile(expectation_expression) {
-                Ok(_) => results.push(Ok(())),
-                Err(error) => results.push(Err(ValidationError {
-                    check_id: check_id.to_string(),
-                    error: error.to_string(),
-                    instance_path: format!("/expectations/{:?}", index).to_string(),
-                })),
-            }
-
-            if failure_message.is_some() {
-                let failure_message_expression = failure_message.unwrap().as_str().unwrap();
-                results.push(validate_string_expression(
-                    failure_message_expression,
-                    engine,
-                    check_id,
-                    index,
-                    is_expect || is_expect_enum,
-                ));
-            }
-
-            if warning_message.is_some() && !is_expect_enum {
-              results.push(Err(ValidationError {
-                check_id: check_id.to_string(),
-                error: "warning_message is only available for expect_enum expectations".to_string(),
-                instance_path: format!("/expectations/{:?}", index).to_string(),
-              }));
-            } else if warning_message.is_some() {
-              let warning_message_expression = warning_message.unwrap().as_str().unwrap();
-              results.push(validate_string_expression(
-                  warning_message_expression,
-                  engine,
-                  check_id,
-                  index,
-                  is_expect_enum,
-              ));
-            }
-
-            if is_expect_enum {
-              results.append(&mut validate_expect_enum_content(
-                expectation_expression,
-                check_id,
-                index,
-              ));
-            }
-
-            results
-        })
-        .partition(Result::is_ok);
-
-    let mut expectation_errors: Vec<ValidationError> = expectation_expression_errors
-        .into_iter()
-        .map(Result::unwrap_err)
+        .flat_map(|validator| validator.validate(json_check, check_id))
         .collect();
-
-    let (_, values_expression_errors): (Vec<_>, Vec<_>) = json_check
-        .get("values")
-        .unwrap_or(&json!([]))
-        .as_array()
-        .unwrap_or(&Vec::new())
-        .iter()
-        .enumerate()
-        .flat_map(|(value_index, value)| {
-            let conditions_compilations_results: Vec<Result<_, _>> = value
-                .get("conditions")
-                .unwrap_or(&json!([]))
-                .as_array()
-                .unwrap_or(&Vec::new())
-                .iter()
-                .enumerate()
-                .map(|(condition_index, condition)| {
-                    let default_json_string = json!("");
-                    let when_expression = condition
-                        .get("when")
-                        .unwrap_or(&default_json_string)
-                        .as_str()
-                        .unwrap();
-                    engine
-                        .compile(when_expression)
-                        .map_err(|error| ValidationError {
-                            check_id: check_id.to_string(),
-                            error: error.to_string(),
-                            instance_path: format!(
-                                "/values/{:?}/conditions/{:?}",
-                                value_index, condition_index
-                            ),
-                        })
-                })
-                .collect();
-
-            conditions_compilations_results
-        })
-        .partition(Result::is_ok);
-
-    let mut values_errors = values_expression_errors
-        .into_iter()
-        .map(Result::unwrap_err)
-        .collect();
-
-    let mut errors = vec![];
-    errors.append(&mut schema_validation_errors);
-    errors.append(&mut expectation_errors);
-    errors.append(&mut values_errors);
 
     if errors.is_empty() {
         return Ok(());
     }
 
     Err(errors)
-}
-
-fn validate_string_expression(
-    expression: &str,
-    engine: &Engine,
-    check_id: &str,
-    index: usize,
-    allow_interpolated_strings: bool,
-) -> Result<(), ValidationError> {
-    match engine.compile(format!("`{}`", expression)) {
-        Ok(ast) => {
-            let statements = ast.statements();
-            if statements.len() > 1 {
-                return Err(ValidationError {
-                    check_id: check_id.to_string(),
-                    error: "Too many statements".to_string(),
-                    instance_path: format!("/expectations/{:?}", index).to_string(),
-                });
-            }
-
-            match &statements[0] {
-                Stmt::Expr(expression) => match **expression {
-                    Expr::StringConstant(_, _) => Ok(()),
-                    Expr::InterpolatedString(_, _) => {
-                        if !allow_interpolated_strings {
-                            Err(ValidationError {
-                                check_id: check_id.to_string(),
-                                error: "String interpolation is not allowed here".to_string(),
-                                instance_path: format!("/expectations/{:?}", index).to_string(),
-                            })
-                        } else {
-                            Ok(())
-                        }
-                    }
-                    _ => Err(ValidationError {
-                        check_id: check_id.to_string(),
-                        error: "Field has to be a string".to_string(),
-                        instance_path: format!("/expectations/{:?}", index).to_string(),
-                    }),
-                },
-                _ => Err(ValidationError {
-                    check_id: check_id.to_string(),
-                    error: "Field has to be an expression".to_string(),
-                    instance_path: format!("/expectations/{:?}", index).to_string(),
-                }),
-            }
-        }
-        Err(error) => Err(ValidationError {
-            check_id: check_id.to_string(),
-            error: error.to_string(),
-            instance_path: format!("/expectations/{:?}", index).to_string(),
-        }),
-    }
-}
-
-fn validate_expect_enum_content(
-  expression: &str,
-  check_id: &str,
-  index: usize,
-) -> Vec<Result<(), ValidationError>> {
-  let mut results = vec![];
-
-  if !expression.contains("\"passing\"") {
-    results.push(Err(ValidationError {
-      check_id: check_id.to_string(),
-      error: "passing return value not found".to_string(),
-      instance_path: format!("/expectations/{:?}", index).to_string(),
-    }));
-  }
-
-  if !expression.contains("\"warning\"") {
-    results.push(Err(ValidationError {
-      check_id: check_id.to_string(),
-      error: "warning return value not found. Consider using `expect` expression if a warning return is not needed".to_string(),
-      instance_path: format!("/expectations/{:?}", index).to_string(),
-    }));
-  }
-
-  results
 }
 
 pub fn get_json_schema() -> JSONSchema {
@@ -1000,15 +783,12 @@ mod tests {
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
         assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "passing return value not found"
-        );
+        assert_eq!(validation_errors[0].error, "passing return value not found");
         assert_eq!(validation_errors[0].instance_path, "/expectations/0");
         assert_eq!(
           validation_errors[1].error,
           "warning return value not found. Consider using `expect` expression if a warning return is not needed"
       );
-      assert_eq!(validation_errors[1].instance_path, "/expectations/0");
+        assert_eq!(validation_errors[1].instance_path, "/expectations/0");
     }
 }

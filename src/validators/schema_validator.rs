@@ -56,24 +56,21 @@ fn validate_schema(
     check_id: &str,
     schema: &JSONSchema,
 ) -> Vec<ValidationError> {
-    let validation_result = match schema.validate(json_check) {
-        Ok(_) => Ok(()),
-        Err(errors) => {
-            let validation_errors = errors
-                .map(|error| ValidationError {
-                    check_id: check_id.to_string(),
-                    error: error.to_string(),
-                    instance_path: error.instance_path.to_string(),
-                })
-                .collect();
-            Err(validation_errors)
-        }
+    let deprecation_warnings = collect_deprecations(json_check, check_id, schema);
+
+    let mut validation_errors = match schema.validate(json_check) {
+        Ok(_) => vec![],
+        Err(errors) => errors
+            .map(|error| ValidationError {
+                check_id: check_id.to_string(),
+                error: error.to_string(),
+                instance_path: error.instance_path.to_string(),
+            })
+            .collect(),
     };
 
-    return match validation_result {
-        Ok(_) => vec![],
-        Err(errors) => errors,
-    };
+    validation_errors.extend(deprecation_warnings);
+    validation_errors
 }
 
 #[cfg(test)]

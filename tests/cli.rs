@@ -27,6 +27,20 @@ fn validates_incorrect_check() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn validates_deprecated_check() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("tlint")?;
+
+    cmd.arg("lint")
+        .arg("-f")
+        .arg("tests/fixtures/deprecated_check.yml");
+    cmd.assert().failure().stdout(predicate::str::contains(
+        " Property \'premium\' is deprecated and will be removed in the future\n",
+    ));
+
+    Ok(())
+}
+
+#[test]
 fn file_doesnt_exist() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("tlint")?;
 

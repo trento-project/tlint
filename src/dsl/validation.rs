@@ -6,7 +6,7 @@ use colored::*;
 use jsonschema::{Draft, JSONSchema};
 use rhai::Engine;
 
-const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
+const SCHEMA: &str = include_str!("../../check_definition.schema.json");
 
 pub fn error_header(head: &str) -> String {
     format!("  {}  ", head).on_red().black().to_string()
@@ -112,7 +112,6 @@ mod tests {
               The value of the Corosync `token` timeout is not set as recommended.
               ## Remediation
               ...
-            premium: true
             metadata:
               target_type: cluster
               provider:
@@ -561,6 +560,104 @@ mod tests {
     }
 
     #[test]
+    fn validate_deprecated_property() {
+        let input = r#"
+            id: 156f64
+            name: corosync configuration file
+            group: corosync
+            description: |
+              corosync `token` timeout is set to expected value
+            remediation: |
+              ## abstract
+              the value of the corosync `token` timeout is not set as recommended.
+              ## remediation
+              ...
+            premium: true
+            metadata:
+              target_type: cluster
+              provider:
+                - aws
+                - azure
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+                argument: totem.token
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect: facts.corosync_token_timeout == values.expected_token_timeout
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156f64", &json_schema, &engine);
+
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
+
+        assert!(validation_result.is_err());
+        assert!(deserialization_result.is_ok());
+    }
+
+    #[test]
+    fn validate_deprecated_property_and_invalid_check() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            descriptio: |
+              Corosync `token` timeout is set to expected value
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            premium: true
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+            values:
+              - name: expected_passing_value
+                default: 5000
+              - name: expected_warning_value
+                default: 3000
+            expectations:
+              - name: timeout
+                expect_enum: |
+                  if facts.corosync_token_timeout == values.expected_passing_value {
+                    "passing"
+                  } else if facts.corosync_token_timeout == values.expected_warning_value {
+                    "warning"
+                  } else {
+                    "critical"
+                  }
+                failure_message: Expectation not met. Timeout value is ${facts.corosync_token_timeout}
+                warning_message: Warning! Timeout value is ${values.expected_warning_value}
+        "#;
+
+        let engine = Engine::new();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156f64", &json_schema, &engine);
+
+        assert!(validation_result.is_err());
+        if let Err(results) = validation_result {
+            assert_eq!(results.len(), 2);
+        }
+    }
+
+    #[test]
     fn validate_invalid_metadata() {
         let input = r#"
         id: 156F64
@@ -573,7 +670,6 @@ mod tests {
           The value of the Corosync `token` timeout is not set as recommended.
           ## Remediation
           ...
-        premium: true
         metadata:
           "": empty
           "  ": whitespace

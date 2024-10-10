@@ -1,8 +1,48 @@
 use crate::dsl::types::{ValidationError, Validator};
-use jsonschema::JSONSchema;
+use jsonschema::{output::BasicOutput, JSONSchema};
+use serde_json;
 
 pub struct SchemaValidator<'a> {
     pub schema: &'a JSONSchema,
+}
+
+fn collect_deprecations(
+    json_check: &serde_json::Value,
+    check_id: &str,
+    schema: &JSONSchema,
+) -> Vec<ValidationError> {
+    match schema.apply(json_check).basic() {
+        // FIXME: crate jsonschema does not resolve "$ref" to type definitions and therefore can
+        // not detect deprecations in linked types
+        BasicOutput::Valid(annotations) => annotations
+            .into_iter()
+            .filter(|annotation| match annotation.value().get("deprecated") {
+                Some(val) => match val.as_bool() {
+                    Some(is_deprecated) => is_deprecated,
+                    None => false,
+                },
+                None => false,
+            })
+            .map(|annotation| {
+                let err_description = match annotation.instance_location().last().unwrap() {
+                    jsonschema::paths::PathChunk::Property(name) => format!("Property '{}'", name),
+                    jsonschema::paths::PathChunk::Index(idx) => format!("Element[{}]", idx),
+                    jsonschema::paths::PathChunk::Keyword(name) => format!("Keyword '{}'", name),
+                };
+
+                ValidationError {
+                    check_id: check_id.to_string(),
+                    error: format!(
+                        "{} is deprecated and will be removed in the future",
+                        err_description
+                    ),
+                    instance_path: annotation.instance_location().to_string(),
+                }
+            })
+            .collect::<Vec<_>>(),
+
+        BasicOutput::Invalid(_) => vec![],
+    }
 }
 
 impl<'a> Validator for SchemaValidator<'a> {

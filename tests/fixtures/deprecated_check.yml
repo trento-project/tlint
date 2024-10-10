@@ -8,6 +8,7 @@ remediation: |
   The value of the Corosync `token` timeout is not set as recommended.
   ## Remediation
   ...
+premium: true
 metadata:
   target_type: cluster
   provider:

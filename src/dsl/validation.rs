@@ -743,7 +743,7 @@ mod tests {
         assert_eq!(validation_errors[0].check_id, "156F64");
         assert_eq!(
             validation_errors[0].error,
-            "{\"failure_message\":\"critical!\",\"name\":\"timeout\"} is not valid under any of the given schemas"
+            "{\"failure_message\":\"critical!\",\"name\":\"timeout\"} is not valid under any of the schemas listed in the 'oneOf' keyword"
         );
         assert_eq!(validation_errors[0].instance_path, "/expectations/0");
     }

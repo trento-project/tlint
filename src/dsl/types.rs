@@ -56,7 +56,7 @@ pub struct ParsingError {
     pub error: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ValidationError {
     pub check_id: String,
     pub error: String,

@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.19", features = ["derive"] }
 colored = "2"
-jsonschema = { version= "0.16.1", default-features = false }
+jsonschema = { version= "0.19.1", default-features = false }
 yaml-rust = "0.4"
 rhai = { version = "1.13.0", features = ["internals"] }
 serde = {version = "1.0.147", features = ["derive"] }

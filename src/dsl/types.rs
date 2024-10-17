@@ -2,10 +2,6 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-pub trait Validator {
-    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError>;
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Check {
     pub id: String,

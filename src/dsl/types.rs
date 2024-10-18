@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 pub trait Validator {
-    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError>;
+    fn validate(&self, json_check: &serde_json::Value) -> Result<(), Vec<ValidationDiagnostic>>;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -15,7 +15,6 @@ pub struct Check {
     pub when: Option<String>,
     pub description: String,
     pub remediation: String,
-    pub premium: Option<bool>,
     pub facts: Vec<FactDeclaration>,
     pub expectations: Vec<Expectation>,
 }
@@ -56,9 +55,14 @@ pub struct ParsingError {
     pub error: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct ValidationError {
-    pub check_id: String,
-    pub error: String,
-    pub instance_path: String,
+#[derive(Debug)]
+pub enum ValidationDiagnostic {
+    Warning {
+        message: String,
+        instance_path: String,
+    },
+    Critical {
+        message: String,
+        instance_path: String,
+    },
 }

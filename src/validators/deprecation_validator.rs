@@ -1,14 +1,17 @@
 use jsonschema::{BasicOutput, JSONSchema};
 
-use crate::dsl::validation::{ValidationDiagnostic, Validator};
+use crate::dsl::types::{ValidationDiagnostic, Validator};
 
 pub struct DeprecationValidator<'a> {
     pub schema: &'a JSONSchema,
 }
 
 impl<'a> DeprecationValidator<'a> {
-    pub fn validate(&self, json_check: &serde_json::Value) -> Vec<ValidationDiagnostic> {
-        match self.schema.apply(json_check).basic() {
+    pub fn validate(
+        &self,
+        json_check: &serde_json::Value,
+    ) -> Result<(), Vec<ValidationDiagnostic>> {
+        let diagnostics = match self.schema.apply(json_check).basic() {
             // FIXME: crate jsonschema does not resolve "$ref" to type definitions and therefore can
             // not detect deprecations in linked types
             BasicOutput::Valid(annotations) => annotations
@@ -45,12 +48,18 @@ impl<'a> DeprecationValidator<'a> {
                 .collect::<Vec<_>>(),
 
             BasicOutput::Invalid(_) => Vec::new(),
+        };
+
+        if diagnostics.len() > 0 {
+            return Err(diagnostics);
         }
+
+        Ok(())
     }
 }
 
 impl<'a> Validator for DeprecationValidator<'a> {
-    fn validate(&self, json_check: &serde_json::Value) -> Vec<ValidationDiagnostic> {
+    fn validate(&self, json_check: &serde_json::Value) -> Result<(), Vec<ValidationDiagnostic>> {
         self.validate(json_check)
     }
 }
@@ -99,9 +108,10 @@ mod tests {
             schema: &json_schema,
         };
         let diagnostics = validator.validate(&json_value);
+
         assert!(
-            diagnostics.is_empty(),
-            "an invalid check can not have deprecation warnings"
+            diagnostics.is_ok(),
+            "an invalid check can not raise deprecation warnings"
         );
     }
 
@@ -148,8 +158,8 @@ mod tests {
         };
         let diagnostics = validator.validate(&json_value);
         assert!(
-            diagnostics.is_empty(),
-            "a valid check should not have deprecation warnings"
+            diagnostics.is_ok(),
+            "a valid check can not raise deprecation warnings"
         );
     }
 
@@ -197,20 +207,22 @@ mod tests {
         };
         let diagnostics = validator.validate(&json_value);
 
-        assert_eq!(diagnostics.len(), 1);
+        assert!(diagnostics.as_ref().is_err_and(|d| d.len() == 1));
 
-        match &diagnostics[0] {
-            ValidationDiagnostic::Warning {
-                message,
-                instance_path,
-            } => {
-                assert_eq!(
+        if let Err(diagnostics) = diagnostics {
+            match &diagnostics[0] {
+                ValidationDiagnostic::Warning {
                     message,
-                    "Property 'premium' is deprecated and will be removed in the future"
-                );
-                assert_eq!(instance_path, "/premium");
-            }
-            v => panic!("Unexpected variant {:?}", v),
+                    instance_path,
+                } => {
+                    assert_eq!(
+                        message,
+                        "Property 'premium' is deprecated and will be removed in the future"
+                    );
+                    assert_eq!(instance_path, "/premium");
+                }
+                v => panic!("Unexpected variant {:?}", v),
+            };
         };
     }
 }

@@ -5,29 +5,15 @@ use crate::validators::{
     deprecation_validator::DeprecationValidator, schema_validator::SchemaValidator,
 };
 
+use super::types::{ValidationDiagnostic, Validator};
+
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
-
-pub trait Validator {
-    fn validate(&self, json_check: &serde_json::Value) -> Vec<ValidationDiagnostic>;
-}
-
-#[derive(Debug)]
-pub enum ValidationDiagnostic {
-    Warning {
-        message: String,
-        instance_path: String,
-    },
-    Critical {
-        message: String,
-        instance_path: String,
-    },
-}
 
 pub fn validate(
     json_check: &serde_json::Value,
     schema: &JSONSchema,
     engine: &Engine,
-) -> Vec<ValidationDiagnostic> {
+) -> Result<(), Vec<ValidationDiagnostic>> {
     let schema_validator = SchemaValidator { schema };
     let deprecation_validator = DeprecationValidator { schema };
 
@@ -35,7 +21,7 @@ pub fn validate(
 
     validators
         .iter()
-        .flat_map(|validator| validator.validate(json_check))
+        .map(|validator| validator.validate(json_check))
         .collect()
 }
 

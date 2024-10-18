@@ -1,16 +1,19 @@
 use jsonschema::JSONSchema;
 
-use crate::dsl::validation::{ValidationDiagnostic, Validator};
+use crate::dsl::types::{ValidationDiagnostic, Validator};
 
 pub struct SchemaValidator<'a> {
     pub schema: &'a JSONSchema,
 }
 
 impl<'a> SchemaValidator<'a> {
-    pub fn validate(&self, json_check: &serde_json::Value) -> Vec<ValidationDiagnostic> {
+    pub fn validate(
+        &self,
+        json_check: &serde_json::Value,
+    ) -> Result<(), Vec<ValidationDiagnostic>> {
         match self.schema.validate(json_check) {
-            Ok(_) => Vec::new(),
-            Err(errors) => errors
+            Ok(v) => Ok(v),
+            Err(errors) => Err(errors
                 .map(|e| {
                     // TODO: Match on e.kind and decide what is a warning and what is an error
                     ValidationDiagnostic::Critical {
@@ -18,13 +21,13 @@ impl<'a> SchemaValidator<'a> {
                         instance_path: e.instance_path.to_string(),
                     }
                 })
-                .collect(),
+                .collect()),
         }
     }
 }
 
 impl<'a> Validator for SchemaValidator<'a> {
-    fn validate(&self, json_check: &serde_json::Value) -> Vec<ValidationDiagnostic> {
+    fn validate(&self, json_check: &serde_json::Value) -> Result<(), Vec<ValidationDiagnostic>> {
         self.validate(json_check)
     }
 }
@@ -71,33 +74,35 @@ mod tests {
         let validator = SchemaValidator {
             schema: &json_schema,
         };
-        let validation_diagnostics = validator.validate(&json_value);
+        let diagnostics = validator.validate(&json_value);
 
-        assert_eq!(validation_diagnostics.len(), 2);
+        assert!(diagnostics.as_ref().is_err_and(|d| d.len() == 2));
 
-        match &validation_diagnostics[0] {
-            ValidationDiagnostic::Critical {
-                message,
-                instance_path,
-            } => {
-                assert_eq!(
+        if let Err(diagnostics) = diagnostics {
+            match &diagnostics[0] {
+                ValidationDiagnostic::Critical {
                     message,
-                    "Additional properties are not allowed ('whens' was unexpected)"
-                );
-                assert_eq!(instance_path, "/values/0/conditions/1");
-            }
-            v => panic!("Unexpected variant {:?}", v),
-        };
+                    instance_path,
+                } => {
+                    assert_eq!(
+                        message,
+                        "Additional properties are not allowed ('whens' was unexpected)"
+                    );
+                    assert_eq!(instance_path, "/values/0/conditions/1");
+                }
+                v => panic!("Unexpected variant {:?}", v),
+            };
 
-        match &validation_diagnostics[1] {
-            ValidationDiagnostic::Critical {
-                message,
-                instance_path,
-            } => {
-                assert_eq!(message, "\"when\" is a required property");
-                assert_eq!(instance_path, "/values/0/conditions/1");
-            }
-            v => panic!("Unexpected variant {:?}", v),
+            match &diagnostics[1] {
+                ValidationDiagnostic::Critical {
+                    message,
+                    instance_path,
+                } => {
+                    assert_eq!(message, "\"when\" is a required property");
+                    assert_eq!(instance_path, "/values/0/conditions/1");
+                }
+                v => panic!("Unexpected variant {:?}", v),
+            };
         };
     }
 
@@ -144,7 +149,10 @@ mod tests {
         };
         let validation_diagnostics = validator.validate(&json_value);
 
-        assert!(validation_diagnostics.is_empty());
+        assert!(
+            validation_diagnostics.is_ok(),
+            "a valid check should return the Ok variant"
+        );
 
         // FIXME: What does this really test?
         let deserialization_result = serde_yaml::from_str::<Check>(input);

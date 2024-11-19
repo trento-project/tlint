@@ -1,0 +1,21 @@
+{
+  "name": "tlint-web",
+  "version": "0.1.0",
+  "description": "tlint web",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "serve": "webpack serve"
+  },
+  "dependencies": {
+    "comlink": "^4.4.2",
+    "tlint": "file:../pkg"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^5.1.2",
+    "webpack": "^5.38.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0"
+  }
+}

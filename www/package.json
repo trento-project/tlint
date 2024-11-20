@@ -9,6 +9,8 @@
     "serve": "webpack serve"
   },
   "dependencies": {
+    "@codemirror/lang-yaml": "^6.1.1",
+    "codemirror": "^6.0.1",
     "comlink": "^4.4.2",
     "tlint": "file:../pkg"
   },

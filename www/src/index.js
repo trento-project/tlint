@@ -6,11 +6,15 @@ Lint.then((lib) => {
 
     const submit = document.getElementById("submit");
     submit.addEventListener("click", async (event) => {
-        const content = document.getElementById("checkContent").value;
-        const { result, message } = await lib.lint(content);
-        console.log(message)
-        document.getElementById("result").innerHTML = message;
-        const color = result ? "green" : "red";
-        document.getElementById("result").style.backgroundColor = color;
+        const textarea = document.getElementById("checkContent");
+        textarea.disabled = true;
+        submit.disabled = true;
+        document.getElementById("result").innerHTML = "Linting...";
+        document.getElementById("result").style.backgroundColor = "gray";
+        const { result, messages } = await lib.lint(textarea.value);
+        document.getElementById("result").innerHTML = messages.join("\n");
+        document.getElementById("result").style.backgroundColor = result ? "green" : "red";
+        textarea.disabled = false;
+        submit.disabled = false;
     });
 });

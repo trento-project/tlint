@@ -12,7 +12,7 @@ pub mod validators;
 #[derive(Serialize, Deserialize)]
 pub struct ValidationResult {
     pub result: bool,
-    pub message: String
+    pub messages: Vec<String>
 }
 
 #[wasm_bindgen]
@@ -28,7 +28,7 @@ pub fn lint(content: String) -> JsValue {
         Err(ref error) => {
             ValidationResult {
                 result: false,
-                message: error.to_string()
+                messages: vec![error.to_string()]
             }
         }
         Ok(check) => {
@@ -41,24 +41,23 @@ pub fn lint(content: String) -> JsValue {
                 &engine,
             );
 
-            let message = match validation_errors {
+            let messages = match validation_errors {
                 Err(ref errors) => {
                     errors
                     .into_iter()
-                    .fold(
-                        "".to_string(),
-                        |acc, ValidationError { check_id: _, error, instance_path }| 
-                        format!("{}{} - path: {}\n", acc, error, instance_path)
+                    .map(|ValidationError { check_id: _, error, instance_path }| 
+                        format!("{} - path: {}", error, instance_path)
                     )
+                    .collect()
                 }
-                Ok(()) => {
-                    String::from("Ok!")
+                Ok(()) => {                    
+                    vec![String::from("Ok!")]
                 }
             };
 
             ValidationResult {
                 result: validation_errors.is_ok(),
-                message: message
+                messages: messages
             }
         }
     };

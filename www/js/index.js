@@ -33,6 +33,7 @@ Lint.then((lib) => {
         code.dispatch({
             changes: {from: 0, to: code.state.doc.toString().length, insert:""}
         })
+        submit.disabled = false;
         document.getElementById("result").style.removeProperty("background-color");
         document.getElementById("result").innerHTML = "";
     });

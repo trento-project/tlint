@@ -1,0 +1,28 @@
+# Configure rustup-less wasm
+# https://rustwasm.github.io/wasm-pack/book/prerequisites/non-rustup-setups.html
+FROM opensuse/tumbleweed AS wasm-setup
+WORKDIR /wasm
+RUN zypper -n in wget tar
+RUN wget https://static.rust-lang.org/dist/rust-std-1.82.0-wasm32-unknown-unknown.tar.gz -O wasm32.tar.gz
+RUN tar -xf wasm32.tar.gz -C /wasm
+
+# FROM registry.suse.com/bci/rust:1.82 AS builder
+# Using suse bci rust image breaks the compilation as for some reason the
+# rust code of tlint and wasm are of different versions (even though they print even the same sha...)
+FROM rust:1.82 AS builder
+COPY --from=wasm-setup /wasm/rust-std-1.82.0-wasm32-unknown-unknown/rust-std-wasm32-unknown-unknown/lib/rustlib /usr/lib/rustlib
+RUN cargo install wasm-pack@0.13.1
+WORKDIR /home/tlint/
+COPY . .
+WORKDIR /home/tlint/www
+RUN wasm-pack build
+
+FROM registry.suse.com/bci/nodejs:20 AS assets
+COPY --from=builder /home/tlint/www /home/tlint/www
+WORKDIR /home/tlint/www/
+RUN npm install
+ENV NODE_ENV="production"
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=assets /home/tlint/www/dist/* /usr/share/nginx/html

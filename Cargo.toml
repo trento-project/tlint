@@ -3,6 +3,9 @@ name = "tlint"
 version = "0.9.4"
 edition = "2021"
 
+[lib]
+name = "tlint"
+
 [dependencies]
 clap = { version = "4.5.19", features = ["derive"] }
 colored = "2"

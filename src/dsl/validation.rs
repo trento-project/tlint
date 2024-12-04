@@ -1,4 +1,4 @@
-use super::types::{ValidationError, Validator};
+use super::types::{ValidationDiagnostic, Validator};
 use crate::validators::expectation_validator::ExpectationValidator;
 use crate::validators::schema_validator::SchemaValidator;
 use crate::validators::value_validator::ValueValidator;
@@ -12,12 +12,16 @@ pub fn error_header(head: &str) -> String {
     format!("  {}  ", head).on_red().black().to_string()
 }
 
+pub fn warning_header(head: &str) -> String {
+    format!("  {}  ", head).on_yellow().black().to_string()
+}
+
 pub fn validate(
     json_check: &serde_json::Value,
     check_id: &str,
     schema: &JSONSchema,
     engine: &Engine,
-) -> Result<(), Vec<ValidationError>> {
+) -> Result<(), Vec<ValidationDiagnostic>> {
     let schema_validator = SchemaValidator { schema };
     let expectation_validator = ExpectationValidator { engine };
     let value_validator = ValueValidator { engine };
@@ -25,7 +29,7 @@ pub fn validate(
     let validators: Vec<&dyn Validator> =
         vec![&schema_validator, &expectation_validator, &value_validator];
 
-    let errors: Vec<ValidationError> = validators
+    let errors: Vec<ValidationDiagnostic> = validators
         .iter()
         .flat_map(|validator| validator.validate(json_check, check_id))
         .collect();
@@ -38,12 +42,13 @@ pub fn validate(
 }
 
 pub fn get_json_schema() -> JSONSchema {
-    let value = serde_json::from_str(SCHEMA).unwrap();
+    let value = serde_json::from_str(SCHEMA)
+        .expect("a valid JSON schema should be embedded during compilation");
 
     let compiled_schema = JSONSchema::options()
         .with_draft(Draft::Draft201909)
         .compile(&value)
-        .expect("A valid schema");
+        .expect("a JSON schema according to draft 2019-09 aka. Draft 8 should be embedded during compilation");
 
     compiled_schema
 }

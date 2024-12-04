@@ -1,4 +1,4 @@
-use crate::dsl::types::{ValidationError, Validator};
+use crate::dsl::types::{ValidationDiagnostic, Validator};
 use rhai::{Engine, Expr, Stmt};
 use serde_json::json;
 
@@ -7,7 +7,11 @@ pub struct ExpectationValidator<'a> {
 }
 
 impl<'a> Validator for ExpectationValidator<'a> {
-    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError> {
+    fn validate(
+        &self,
+        json_check: &serde_json::Value,
+        check_id: &str,
+    ) -> Vec<ValidationDiagnostic> {
         validate_expectations(json_check, check_id, self.engine)
     }
 }
@@ -18,14 +22,14 @@ fn validate_string_expression(
     check_id: &str,
     index: usize,
     allow_interpolated_strings: bool,
-) -> Result<(), ValidationError> {
+) -> Result<(), ValidationDiagnostic> {
     match engine.compile(format!("`{}`", expression)) {
         Ok(ast) => {
             let statements = ast.statements();
             if statements.len() > 1 {
-                return Err(ValidationError {
+                return Err(ValidationDiagnostic::Critical {
                     check_id: check_id.to_string(),
-                    error: "Too many statements".to_string(),
+                    message: "Too many statements".to_string(),
                     instance_path: format!("/expectations/{:?}", index).to_string(),
                 });
             }
@@ -35,31 +39,31 @@ fn validate_string_expression(
                     Expr::StringConstant(_, _) => Ok(()),
                     Expr::InterpolatedString(_, _) => {
                         if !allow_interpolated_strings {
-                            Err(ValidationError {
+                            Err(ValidationDiagnostic::Critical {
                                 check_id: check_id.to_string(),
-                                error: "String interpolation is not allowed here".to_string(),
+                                message: "String interpolation is not allowed here".to_string(),
                                 instance_path: format!("/expectations/{:?}", index).to_string(),
                             })
                         } else {
                             Ok(())
                         }
                     }
-                    _ => Err(ValidationError {
+                    _ => Err(ValidationDiagnostic::Critical {
                         check_id: check_id.to_string(),
-                        error: "Field has to be a string".to_string(),
+                        message: "Field has to be a string".to_string(),
                         instance_path: format!("/expectations/{:?}", index).to_string(),
                     }),
                 },
-                _ => Err(ValidationError {
+                _ => Err(ValidationDiagnostic::Critical {
                     check_id: check_id.to_string(),
-                    error: "Field has to be an expression".to_string(),
+                    message: "Field has to be an expression".to_string(),
                     instance_path: format!("/expectations/{:?}", index).to_string(),
                 }),
             }
         }
-        Err(error) => Err(ValidationError {
+        Err(error) => Err(ValidationDiagnostic::Critical {
             check_id: check_id.to_string(),
-            error: error.to_string(),
+            message: error.to_string(),
             instance_path: format!("/expectations/{:?}", index).to_string(),
         }),
     }
@@ -69,21 +73,21 @@ fn validate_expect_enum_content(
     expression: &str,
     check_id: &str,
     index: usize,
-) -> Vec<Result<(), ValidationError>> {
+) -> Vec<Result<(), ValidationDiagnostic>> {
     let mut results = vec![];
 
     if !expression.contains("\"passing\"") {
-        results.push(Err(ValidationError {
+        results.push(Err(ValidationDiagnostic::Critical {
             check_id: check_id.to_string(),
-            error: "passing return value not found".to_string(),
+            message: "passing return value not found".to_string(),
             instance_path: format!("/expectations/{:?}", index).to_string(),
         }));
     }
 
     if !expression.contains("\"warning\"") {
-        results.push(Err(ValidationError {
+        results.push(Err(ValidationDiagnostic::Critical {
       check_id: check_id.to_string(),
-      error: "warning return value not found. Consider using `expect` expression if a warning return is not needed".to_string(),
+      message: "warning return value not found. Consider using `expect` expression if a warning return is not needed".to_string(),
       instance_path: format!("/expectations/{:?}", index).to_string(),
     }));
     }
@@ -95,7 +99,7 @@ fn validate_expectations(
     json_check: &serde_json::Value,
     check_id: &str,
     engine: &Engine,
-) -> Vec<ValidationError> {
+) -> Vec<ValidationDiagnostic> {
     let (_, expectation_expression_errors): (Vec<_>, Vec<_>) = json_check
         .get("expectations")
         .unwrap_or(&json!([]))
@@ -126,9 +130,9 @@ fn validate_expectations(
 
             match engine.compile(expectation_expression) {
                 Ok(_) => results.push(Ok(())),
-                Err(error) => results.push(Err(ValidationError {
+                Err(error) => results.push(Err(ValidationDiagnostic::Critical {
                     check_id: check_id.to_string(),
-                    error: error.to_string(),
+                    message: error.to_string(),
                     instance_path: format!("/expectations/{:?}", index).to_string(),
                 })),
             }
@@ -148,9 +152,9 @@ fn validate_expectations(
             }
 
             if warning_message.is_some() && !is_expect_enum {
-                results.push(Err(ValidationError {
+                results.push(Err(ValidationDiagnostic::Critical {
                     check_id: check_id.to_string(),
-                    error: "warning_message is only available for expect_enum expectations"
+                    message: "warning_message is only available for expect_enum expectations"
                         .to_string(),
                     instance_path: format!("/expectations/{:?}", index).to_string(),
                 }));

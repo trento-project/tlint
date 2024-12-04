@@ -1,4 +1,4 @@
-use crate::dsl::types::{ValidationError, Validator};
+use crate::dsl::types::{ValidationDiagnostic, Validator};
 use jsonschema::{output::BasicOutput, JSONSchema};
 use serde_json;
 
@@ -10,7 +10,7 @@ fn collect_deprecations(
     json_check: &serde_json::Value,
     check_id: &str,
     schema: &JSONSchema,
-) -> Vec<ValidationError> {
+) -> Vec<ValidationDiagnostic> {
     match schema.apply(json_check).basic() {
         // FIXME: crate jsonschema does not resolve "$ref" to type definitions and therefore can
         // not detect deprecations in linked types
@@ -30,9 +30,9 @@ fn collect_deprecations(
                     jsonschema::paths::PathChunk::Keyword(name) => format!("Keyword '{}'", name),
                 };
 
-                ValidationError {
+                ValidationDiagnostic::Warning {
                     check_id: check_id.to_string(),
-                    error: format!(
+                    message: format!(
                         "{} is deprecated and will be removed in the future",
                         err_description
                     ),
@@ -46,7 +46,11 @@ fn collect_deprecations(
 }
 
 impl<'a> Validator for SchemaValidator<'a> {
-    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError> {
+    fn validate(
+        &self,
+        json_check: &serde_json::Value,
+        check_id: &str,
+    ) -> Vec<ValidationDiagnostic> {
         validate_schema(json_check, check_id, self.schema)
     }
 }
@@ -55,15 +59,15 @@ fn validate_schema(
     json_check: &serde_json::Value,
     check_id: &str,
     schema: &JSONSchema,
-) -> Vec<ValidationError> {
+) -> Vec<ValidationDiagnostic> {
     let deprecation_warnings = collect_deprecations(json_check, check_id, schema);
 
     let mut validation_errors = match schema.validate(json_check) {
         Ok(_) => vec![],
         Err(errors) => errors
-            .map(|error| ValidationError {
+            .map(|error| ValidationDiagnostic::Critical {
                 check_id: check_id.to_string(),
-                error: error.to_string(),
+                message: error.to_string(),
                 instance_path: error.instance_path.to_string(),
             })
             .collect(),

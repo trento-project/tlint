@@ -10,7 +10,7 @@ use std::process;
 pub mod dsl;
 
 use dsl::display;
-use dsl::types::{Check, ValidationError};
+use dsl::types::{Check, ValidationDiagnostic};
 use dsl::validation;
 
 pub mod validators;
@@ -127,16 +127,24 @@ fn main() -> Result<(), serde_yaml::Error> {
                     validation_errors
                         .into_iter()
                         .flat_map(Result::unwrap_err)
-                        .for_each(
-                            |ValidationError {
-                                 check_id,
-                                 error,
-                                 instance_path,
-                             }| {
-                                println!("{} - {}", validation::error_header(&check_id), error);
+                        .for_each(|diagnostic| match diagnostic {
+                            ValidationDiagnostic::Warning {
+                                check_id,
+                                message,
+                                instance_path,
+                            } => {
+                                println!("{} - {}", validation::warning_header(&check_id), message);
                                 println!("  path: {}\n", instance_path);
-                            },
-                        );
+                            }
+                            ValidationDiagnostic::Critical {
+                                check_id,
+                                message,
+                                instance_path,
+                            } => {
+                                println!("{} - {}", validation::error_header(&check_id), message);
+                                println!("  path: {}\n", instance_path);
+                            }
+                        });
 
                     process::exit(exit_code);
                 }
@@ -160,16 +168,34 @@ fn main() -> Result<(), serde_yaml::Error> {
                 let exit_code = match validation_result {
                     Ok(_) => 0,
                     Err(validation_errors) => {
-                        validation_errors.iter().for_each(
-                            |ValidationError {
-                                 check_id,
-                                 error,
-                                 instance_path,
-                             }| {
-                                println!("{} - {}", validation::error_header(check_id), error);
-                                println!("  path: {}\n", instance_path);
-                            },
-                        );
+                        validation_errors
+                            .iter()
+                            .for_each(|diagnostic| match diagnostic {
+                                ValidationDiagnostic::Warning {
+                                    check_id,
+                                    message,
+                                    instance_path,
+                                } => {
+                                    println!(
+                                        "{} - {}",
+                                        validation::warning_header(&check_id),
+                                        message
+                                    );
+                                    println!("  path: {}\n", instance_path);
+                                }
+                                ValidationDiagnostic::Critical {
+                                    check_id,
+                                    message,
+                                    instance_path,
+                                } => {
+                                    println!(
+                                        "{} - {}",
+                                        validation::error_header(&check_id),
+                                        message
+                                    );
+                                    println!("  path: {}\n", instance_path);
+                                }
+                            });
                         1
                     }
                 };

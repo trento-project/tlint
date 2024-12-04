@@ -1,4 +1,4 @@
-use super::types::{ValidationError, Validator};
+use super::types::{ValidationDiagnostic, Validator};
 use crate::validators::expectation_validator::ExpectationValidator;
 use crate::validators::schema_validator::SchemaValidator;
 use crate::validators::value_validator::ValueValidator;
@@ -12,12 +12,16 @@ pub fn error_header(head: &str) -> String {
     format!("  {}  ", head).on_red().black().to_string()
 }
 
+pub fn warning_header(head: &str) -> String {
+    format!("  {}  ", head).on_yellow().black().to_string()
+}
+
 pub fn validate(
     json_check: &serde_json::Value,
     check_id: &str,
     schema: &JSONSchema,
     engine: &Engine,
-) -> Result<(), Vec<ValidationError>> {
+) -> Result<(), Vec<ValidationDiagnostic>> {
     let schema_validator = SchemaValidator { schema };
     let expectation_validator = ExpectationValidator { engine };
     let value_validator = ValueValidator { engine };
@@ -25,7 +29,7 @@ pub fn validate(
     let validators: Vec<&dyn Validator> =
         vec![&schema_validator, &expectation_validator, &value_validator];
 
-    let errors: Vec<ValidationError> = validators
+    let errors: Vec<ValidationDiagnostic> = validators
         .iter()
         .flat_map(|validator| validator.validate(json_check, check_id))
         .collect();
@@ -38,12 +42,13 @@ pub fn validate(
 }
 
 pub fn get_json_schema() -> JSONSchema {
-    let value = serde_json::from_str(SCHEMA).unwrap();
+    let value = serde_json::from_str(SCHEMA)
+        .expect("a valid JSON schema should be embedded during compilation");
 
     let compiled_schema = JSONSchema::options()
         .with_draft(Draft::Draft201909)
         .compile(&value)
-        .expect("A valid schema");
+        .expect("a JSON schema according to draft 2019-09 aka. Draft 8 should be embedded during compilation");
 
     compiled_schema
 }
@@ -88,15 +93,28 @@ mod tests {
         let engine = Engine::new();
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("the test string should be valid yaml");
         let json_schema = get_json_schema();
-        let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Additional properties are not allowed ('whens' was unexpected)"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/values/0/conditions/1");
+        let expected_check_id = "156F64";
+        let diagnostics = validate(&json_value, expected_check_id, &json_schema, &engine)
+            .expect_err("the check should yield an error");
+
+        assert!(diagnostics.len() == 2);
+        match &diagnostics[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                message,
+                instance_path,
+                check_id,
+            } => {
+                assert_eq!(check_id, expected_check_id);
+                assert_eq!(
+                    message,
+                    "Additional properties are not allowed ('whens' was unexpected)"
+                );
+                assert_eq!(instance_path, "/values/0/conditions/1");
+            }
+        };
     }
 
     #[test]
@@ -183,12 +201,20 @@ mod tests {
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Unknown operator: '?' (line 1, position 5)"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
+
+        assert!(validation_errors.len() == 1);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(message, "Unknown operator: '?' (line 1, position 5)");
+                assert_eq!(instance_path, "/expectations/0");
+            }
+        }
     }
 
     #[test]
@@ -227,12 +253,20 @@ mod tests {
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Unknown operator: '?' (line 1, position 5)"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/values/0/conditions/0");
+
+        assert!(validation_errors.len() == 1);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(message, "Unknown operator: '?' (line 1, position 5)");
+                assert_eq!(instance_path, "/values/0/conditions/0");
+            }
+        }
     }
 
     #[test]
@@ -700,12 +734,23 @@ mod tests {
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Additional properties are not allowed ('', '  ' were unexpected)"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/metadata");
+
+        assert!(validation_errors.len() == 1);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(
+                    message,
+                    "Additional properties are not allowed ('', '  ' were unexpected)"
+                );
+                assert_eq!(instance_path, "/metadata");
+            }
+        }
     }
 
     #[test]
@@ -740,12 +785,20 @@ mod tests {
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "{\"failure_message\":\"critical!\",\"name\":\"timeout\"} is not valid under any of the schemas listed in the 'oneOf' keyword"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
+
+        assert!(validation_errors.len() == 1);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(message, "{\"failure_message\":\"critical!\",\"name\":\"timeout\"} is not valid under any of the schemas listed in the 'oneOf' keyword");
+                assert_eq!(instance_path, "/expectations/0");
+            }
+        }
     }
 
     #[test]
@@ -789,12 +842,23 @@ mod tests {
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Open string is not terminated (line 1, position 58)"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
+
+        assert!(validation_errors.len() == 1);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(
+                    message,
+                    "Open string is not terminated (line 1, position 58)"
+                );
+                assert_eq!(instance_path, "/expectations/0");
+            }
+        }
     }
 
     #[test]
@@ -833,19 +897,39 @@ mod tests {
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "warning_message is only available for expect_enum expectations"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
 
-        assert_eq!(validation_errors[1].check_id, "156F64");
-        assert_eq!(
-            validation_errors[1].error,
-            "warning_message is only available for expect_enum expectations"
-        );
-        assert_eq!(validation_errors[1].instance_path, "/expectations/1");
+        assert!(validation_errors.len() == 2);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(
+                    message,
+                    "warning_message is only available for expect_enum expectations"
+                );
+                assert_eq!(instance_path, "/expectations/0");
+            }
+        }
+
+        match &validation_errors[1] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(
+                    message,
+                    "warning_message is only available for expect_enum expectations"
+                );
+                assert_eq!(instance_path, "/expectations/1");
+            }
+        }
     }
 
     #[test]
@@ -878,13 +962,33 @@ mod tests {
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let json_schema = get_json_schema();
         let validation_errors = validate(&json_value, "156F64", &json_schema, &engine).unwrap_err();
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(validation_errors[0].error, "passing return value not found");
-        assert_eq!(validation_errors[0].instance_path, "/expectations/0");
-        assert_eq!(
-          validation_errors[1].error,
+
+        assert!(validation_errors.len() == 2);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(message, "passing return value not found");
+                assert_eq!(instance_path, "/expectations/0");
+            }
+        }
+        match &validation_errors[1] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(message,
           "warning return value not found. Consider using `expect` expression if a warning return is not needed"
-      );
-        assert_eq!(validation_errors[1].instance_path, "/expectations/0");
+        );
+                assert_eq!(instance_path, "/expectations/0");
+            }
+        }
     }
 }

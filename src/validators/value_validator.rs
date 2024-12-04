@@ -1,4 +1,4 @@
-use crate::dsl::types::{ValidationError, Validator};
+use crate::dsl::types::{ValidationDiagnostic, Validator};
 use rhai::Engine;
 use serde_json::json;
 
@@ -7,7 +7,11 @@ pub struct ValueValidator<'a> {
 }
 
 impl<'a> Validator for ValueValidator<'a> {
-    fn validate(&self, json_check: &serde_json::Value, check_id: &str) -> Vec<ValidationError> {
+    fn validate(
+        &self,
+        json_check: &serde_json::Value,
+        check_id: &str,
+    ) -> Vec<ValidationDiagnostic> {
         validate_values(json_check, check_id, self.engine)
     }
 }
@@ -16,7 +20,7 @@ fn validate_values(
     json_check: &serde_json::Value,
     check_id: &str,
     engine: &Engine,
-) -> Vec<ValidationError> {
+) -> Vec<ValidationDiagnostic> {
     let (_, values_expression_errors): (Vec<_>, Vec<_>) = json_check
         .get("values")
         .unwrap_or(&json!([]))
@@ -39,16 +43,16 @@ fn validate_values(
                         .unwrap_or(&default_json_string)
                         .as_str()
                         .unwrap();
-                    engine
-                        .compile(when_expression)
-                        .map_err(|error| ValidationError {
+                    engine.compile(when_expression).map_err(|error| {
+                        ValidationDiagnostic::Critical {
                             check_id: check_id.to_string(),
-                            error: error.to_string(),
+                            message: error.to_string(),
                             instance_path: format!(
                                 "/values/{:?}/conditions/{:?}",
                                 value_index, condition_index
                             ),
-                        })
+                        }
+                    })
                 })
                 .collect();
 
@@ -152,11 +156,19 @@ mod tests {
         let json_value: serde_json::Value =
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let validation_errors = validate_values(&json_value, "156F64", &engine);
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Unknown operator: '?' (line 1, position 5)"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/values/0/conditions/0");
+
+        assert!(validation_errors.len() == 1);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(message, "Unknown operator: '?' (line 1, position 5)");
+                assert_eq!(instance_path, "/values/0/conditions/0");
+            }
+        }
     }
 }

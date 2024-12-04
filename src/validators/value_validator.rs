@@ -156,11 +156,19 @@ mod tests {
         let json_value: serde_json::Value =
             serde_yaml::from_str(input).expect("Unable to parse yaml");
         let validation_errors = validate_values(&json_value, "156F64", &engine);
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Unknown operator: '?' (line 1, position 5)"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/values/0/conditions/0");
+
+        assert!(validation_errors.len() == 1);
+        match &validation_errors[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                check_id,
+                message,
+                instance_path,
+            } => {
+                assert_eq!(check_id, "156F64");
+                assert_eq!(message, "Unknown operator: '?' (line 1, position 5)");
+                assert_eq!(instance_path, "/values/0/conditions/0");
+            }
+        }
     }
 }

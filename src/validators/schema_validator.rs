@@ -115,15 +115,45 @@ mod tests {
         "#;
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("the test string should be valid yaml");
         let json_schema = get_json_schema();
-        let validation_errors = validate_schema(&json_value, "156F64", &json_schema);
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Additional properties are not allowed ('whens' was unexpected)"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/values/0/conditions/1");
+        let validator = SchemaValidator {
+            schema: &json_schema,
+        };
+
+        let expected_check_id = "156F64";
+        let diagnostics = validator.validate(&json_value, expected_check_id);
+
+        assert!(diagnostics.len() == 2);
+
+        match &diagnostics[0] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                message,
+                instance_path,
+                check_id,
+            } => {
+                assert_eq!(check_id, expected_check_id);
+                assert_eq!(
+                    message,
+                    "Additional properties are not allowed ('whens' was unexpected)"
+                );
+                assert_eq!(instance_path, "/values/0/conditions/1");
+            }
+        };
+
+        match &diagnostics[1] {
+            w @ ValidationDiagnostic::Warning { .. } => panic!("Unexpected variant {:?}", w),
+            ValidationDiagnostic::Critical {
+                message,
+                instance_path,
+                check_id,
+            } => {
+                assert_eq!(check_id, expected_check_id);
+                assert_eq!(message, "\"when\" is a required property");
+                assert_eq!(instance_path, "/values/0/conditions/1");
+            }
+        };
     }
 
     #[test]
@@ -163,15 +193,32 @@ mod tests {
         "#;
 
         let json_value: serde_json::Value =
-            serde_yaml::from_str(input).expect("Unable to parse yaml");
+            serde_yaml::from_str(input).expect("the test string should be valid yaml");
         let json_schema = get_json_schema();
-        let validation_errors = validate_schema(&json_value, "156F64", &json_schema);
-        assert_eq!(validation_errors[0].check_id, "156F64");
-        assert_eq!(
-            validation_errors[0].error,
-            "Property 'premium' is deprecated and will be removed in the future"
-        );
-        assert_eq!(validation_errors[0].instance_path, "/premium");
+        let validator = SchemaValidator {
+            schema: &json_schema,
+        };
+
+        let expected_check_id = "156F64";
+        let diagnostics = validator.validate(&json_value, expected_check_id);
+
+        assert!(diagnostics.len() == 1);
+
+        match &diagnostics[0] {
+            ValidationDiagnostic::Warning {
+                message,
+                instance_path,
+                check_id,
+            } => {
+                assert_eq!(check_id, expected_check_id);
+                assert_eq!(
+                    message,
+                    "Property 'premium' is deprecated and will be removed in the future"
+                );
+                assert_eq!(instance_path, "/premium");
+            }
+            e @ ValidationDiagnostic::Critical { .. } => panic!("Unexpected variant {:?}", e),
+        };
     }
 
     #[test]

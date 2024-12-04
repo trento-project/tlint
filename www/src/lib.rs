@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 use serde::{Serialize, Deserialize};
 use rhai::Engine;
 use tlint::validate;
-use tlint::dsl::types::{Check, ValidationError};
+use tlint::dsl::types::{Check, ValidationDiagnostic};
 
 #[derive(Serialize, Deserialize)]
 struct ValidationResult {
@@ -38,12 +38,15 @@ pub fn lint(content: String) -> JsValue {
                 Err(ref errors) => {
                     errors
                     .into_iter()
-                    .map(|ValidationError { check_id: _, error, instance_path }| 
-                        format!("{} - path: {}", error, instance_path)
-                    )
+                    .map(|diagnostic| {
+                        match diagnostic {
+                            ValidationDiagnostic::Warning { message, instance_path, ..} => format!("{} - path: {}", message, instance_path),
+                            ValidationDiagnostic::Critical { message, instance_path, ..} => format!("{} - path: {}", message, instance_path),
+                        }
+                    })
                     .collect()
                 }
-                Ok(()) => {                    
+                Ok(()) => {
                     vec![String::from("Ok!")]
                 }
             };

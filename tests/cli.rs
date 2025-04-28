@@ -16,8 +16,7 @@ fn validates_check() -> Result<(), Box<dyn std::error::Error>> {
 fn validates_incorrect_check() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("tlint")?;
 
-    cmd.arg("lint")
-        .arg("tests/fixtures/invalid_check.yml");
+    cmd.arg("lint").arg("tests/fixtures/invalid_check.yml");
     cmd.assert().failure().stdout(predicate::str::contains(
         "  Parse error   - missing field `id` at line 2 column 1\n",
     ));
@@ -29,8 +28,7 @@ fn validates_incorrect_check() -> Result<(), Box<dyn std::error::Error>> {
 fn validates_deprecated_check() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("tlint")?;
 
-    cmd.arg("lint")
-        .arg("tests/fixtures/deprecated_check.yml");
+    cmd.arg("lint").arg("tests/fixtures/deprecated_check.yml");
     cmd.assert().failure().stdout(predicate::str::contains(
         " Property \'premium\' is deprecated and will be removed in the future\n",
     ));

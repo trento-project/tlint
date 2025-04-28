@@ -6,6 +6,13 @@ use colored::*;
 use jsonschema::{Draft, JSONSchema};
 use rhai::Engine;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EnabledValidator {
+    Expectation,
+    Schema,
+    Value,
+}
+
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
 
 pub fn error_header(head: &str) -> String {
@@ -21,13 +28,25 @@ pub fn validate(
     check_id: &str,
     schema: &JSONSchema,
     engine: &Engine,
+    enabled: &Vec<EnabledValidator>,
 ) -> Result<(), Vec<ValidationDiagnostic>> {
-    let schema_validator = SchemaValidator { schema };
-    let expectation_validator = ExpectationValidator { engine };
-    let value_validator = ValueValidator { engine };
+    let mut validators = Vec::<&dyn Validator>::new();
 
-    let validators: Vec<&dyn Validator> =
-        vec![&schema_validator, &expectation_validator, &value_validator];
+    let expectation_validator = ExpectationValidator { engine };
+    if enabled.contains(&EnabledValidator::Expectation) {
+        validators.push(&expectation_validator);
+    }
+
+
+    let schema_validator = SchemaValidator { schema };
+    if enabled.contains(&EnabledValidator::Schema) {
+        validators.push(&schema_validator);
+    }
+
+    let value_validator = ValueValidator { engine };
+    if enabled.contains(&EnabledValidator::Value) {
+        validators.push(&value_validator);
+    }
 
     let errors: Vec<ValidationDiagnostic> = validators
         .iter()

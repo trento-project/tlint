@@ -55,9 +55,10 @@ impl Validator for LinkValidator {
                             if r.status().is_unsupported() {
                                 "Unsupported Format".to_owned()
                             } else {
-                                "N/A".to_owned()
+                                r.status().code_as_string()
                             }
                         });
+
 
                         diagnostics.push(ValidationDiagnostic::Warning {
                             check_id: check_id.to_string(),
@@ -74,5 +75,101 @@ impl Validator for LinkValidator {
         }
 
         diagnostics
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_ok_check() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Link to https://google.com, because the example dot com domain is excluded
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              Link to https://google.com, because the example dot com domain is excluded
+              ## Remediation
+              ...
+            metadata:
+              target_type: cluster
+              provider:
+                - aws
+                - azure
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+                argument: totem.token
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect: facts.corosync_token_timeout == values.expected_token_timeout
+        "#;
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+
+        let validator = LinkValidator{};
+        let validation_result = validator.validate(&json_value, "156F64");
+
+        assert!(validation_result.is_empty());
+    }
+
+    #[test]
+    fn validate_malformed_link_in_description() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value
+              Link to https://google.com/404, because the example dot com domain is excluded
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              Link to https://google.com/404, because the example dot com domain is excluded
+              ...
+            metadata:
+              target_type: cluster
+              provider:
+                - aws
+                - azure
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+                argument: totem.token
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect: facts.corosync_token_timeout == values.expected_token_timeout
+        "#;
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+
+        let validator = LinkValidator{};
+        let validation_result = validator.validate(&json_value, "156F64");
+
+        assert_eq!(validation_result.len(), 2);
     }
 }

@@ -48,14 +48,12 @@ struct Args {
 #[derive(Debug, Subcommand)]
 enum Commands {
     Lint {
-        #[clap(short, long, value_parser)]
         file: Option<String>,
 
         #[clap(long, value_enum, default_value("all"))]
         rule: Vec<ArgValidator>,
     },
     Show {
-        #[clap(short, long, value_parser)]
         file: Option<String>,
     },
 }

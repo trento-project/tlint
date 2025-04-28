@@ -1,5 +1,6 @@
 use super::types::{ValidationDiagnostic, Validator};
 use crate::validators::expectation_validator::ExpectationValidator;
+use crate::validators::link_validator::LinkValidator;
 use crate::validators::schema_validator::SchemaValidator;
 use crate::validators::value_validator::ValueValidator;
 use colored::*;
@@ -9,6 +10,7 @@ use rhai::Engine;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum EnabledValidator {
     Expectation,
+    Link,
     Schema,
     Value,
 }
@@ -37,6 +39,10 @@ pub fn validate(
         validators.push(&expectation_validator);
     }
 
+    let link_validator = LinkValidator {};
+    if enabled.contains(&EnabledValidator::Link) {
+        validators.push(&link_validator);
+    }
 
     let schema_validator = SchemaValidator { schema };
     if enabled.contains(&EnabledValidator::Schema) {

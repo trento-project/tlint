@@ -153,6 +153,56 @@ mod tests {
     }
 
     #[test]
+    fn validate_invalid_link() {
+        let input = r#"
+            id: 156F64
+            name: Corosync configuration file
+            group: Corosync
+            description: |
+              Corosync `token` timeout is set to expected value learn more at
+              https://not-registered.example.com or don't
+            remediation: |
+              ## Abstract
+              The value of the Corosync `token` timeout is not set as recommended.
+              ## Remediation
+              ...
+            metadata:
+              target_type: cluster
+              provider:
+                - aws
+                - azure
+            facts:
+              - name: corosync_token_timeout
+                gatherer: corosync.conf
+                argument: totem.token
+            values:
+              - name: expected_token_timeout
+                default: 5000
+                conditions:
+                  - value: 30000
+                    when: env.provider == "azure" || env.provider == "aws"
+                  - value: 20000
+                    when: env.provider == "gcp"
+            expectations:
+              - name: timeout
+                expect: facts.corosync_token_timeout == values.expected_token_timeout
+        "#;
+
+        let engine = Engine::new();
+        let validators = all_validators();
+
+        let json_value: serde_json::Value =
+            serde_yaml::from_str(input).expect("Unable to parse yaml");
+        let json_schema = get_json_schema();
+        let validation_result = validate(&json_value, "156F64", &json_schema, &engine, &validators);
+
+        let deserialization_result = serde_yaml::from_str::<Check>(input);
+
+        assert!(validation_result.is_err());
+        assert!(deserialization_result.is_ok());
+    }
+
+    #[test]
     fn validate_ok_check() {
         let input = r#"
             id: 156F64

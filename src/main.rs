@@ -1,6 +1,6 @@
 #![deny(clippy::pedantic)]
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use rhai::Engine;
 use std::fs;
 use std::fs::File;
@@ -13,9 +13,30 @@ pub mod dsl;
 
 use dsl::display;
 use dsl::types::{Check, ValidationDiagnostic};
-use dsl::validation;
+use dsl::validation::{self, EnabledValidator};
 
 pub mod validators;
+
+#[derive(Debug, Clone, Copy, PartialEq, ValueEnum)]
+enum ArgValidator {
+    All,
+    Expectation,
+    Link,
+    Schema,
+    Value,
+}
+
+impl Into<Option<EnabledValidator>> for ArgValidator {
+    fn into(self) -> Option<EnabledValidator> {
+        match self {
+            ArgValidator::All => None,
+            ArgValidator::Expectation => Some(EnabledValidator::Expectation),
+            ArgValidator::Link => Some(EnabledValidator::Link),
+            ArgValidator::Schema => Some(EnabledValidator::Schema),
+            ArgValidator::Value => Some(EnabledValidator::Value),
+        }
+    }
+}
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -29,6 +50,9 @@ enum Commands {
     Lint {
         #[clap(short, long, value_parser)]
         file: Option<String>,
+
+        #[clap(long, value_enum, default_value("all"))]
+        rule: Vec<ArgValidator>,
     },
     Show {
         #[clap(short, long, value_parser)]
@@ -71,12 +95,33 @@ fn scan_directory(directory: &str) -> Result<Vec<String>, std::io::Error> {
     Ok(files_list)
 }
 
+fn normalize_rules(rules: Vec<ArgValidator>) -> Vec<EnabledValidator> {
+    if rules.contains(&ArgValidator::All) {
+        vec![
+            EnabledValidator::Expectation,
+            EnabledValidator::Link,
+            EnabledValidator::Schema,
+            EnabledValidator::Value,
+        ]
+    } else {
+        let mut enabled_validators = Vec::<EnabledValidator>::new();
+        for val in rules {
+            let enabled_validator: Option<EnabledValidator> = val.into();
+            if let Some(enabled_validator) = enabled_validator {
+                enabled_validators.push(enabled_validator);
+            };
+        }
+
+        enabled_validators
+    }
+}
+
 fn main() -> Result<(), serde_yaml::Error> {
     let args = Args::parse();
     let engine = Engine::new();
 
     match args.command {
-        Commands::Lint { file } => match is_directory(file.clone()) {
+        Commands::Lint { file, rule: rules } => match is_directory(file.clone()) {
             true => {
                 if let Some(directory) = file {
                     let json_schema = validation::get_json_schema();
@@ -104,12 +149,14 @@ fn main() -> Result<(), serde_yaml::Error> {
                                 }
                                 Ok(check) => {
                                     let check_id = check.id;
+                                    let rules = normalize_rules(rules.clone());
 
                                     validation::validate(
                                         &json_value,
                                         &check_id,
                                         &json_schema,
                                         &engine,
+                                        &rules,
                                     )
                                 }
                             }
@@ -164,8 +211,9 @@ fn main() -> Result<(), serde_yaml::Error> {
                 let check = deserialization_result.unwrap();
                 let check_id = check.id;
                 let json_schema = validation::get_json_schema();
+                let rules = normalize_rules(rules);
                 let validation_result =
-                    validation::validate(&json_value, &check_id, &json_schema, &engine);
+                    validation::validate(&json_value, &check_id, &json_schema, &engine, &rules);
 
                 let exit_code = match validation_result {
                     Ok(_) => 0,

@@ -3,7 +3,7 @@ use rhai::Engine;
 pub mod dsl;
 
 use dsl::types::ValidationDiagnostic;
-use dsl::validation;
+use dsl::validation::{self, EnabledValidator};
 
 pub mod validators;
 
@@ -13,6 +13,10 @@ pub fn validate(
     engine: &Engine,
 ) -> Result<(), Vec<ValidationDiagnostic>> {
     let json_schema = validation::get_json_schema();
-
-    validation::validate(&json_check, &check_id, &json_schema, &engine)
+    let validators = vec![
+        EnabledValidator::Expectation,
+        EnabledValidator::Schema,
+        EnabledValidator::Value,
+    ];
+    validation::validate(&json_check, &check_id, &json_schema, &engine, &validators)
 }

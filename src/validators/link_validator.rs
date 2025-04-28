@@ -1,12 +1,17 @@
 use crate::dsl::types::ValidationDiagnostic;
 use crate::dsl::types::Validator;
+
+#[cfg(not(target_arch = "wasm32"))]
 use async_compat::Compat;
+#[cfg(not(target_arch = "wasm32"))]
 use lychee_lib::extract::Extractor;
+#[cfg(not(target_arch = "wasm32"))]
 use lychee_lib::{ErrorKind, FileType, InputContent, Response};
 
 pub struct LinkValidator {}
 
 impl Validator for LinkValidator {
+    #[cfg(not(target_arch = "wasm32"))]
     fn validate(
         &self,
         json_check: &serde_json::Value,
@@ -59,7 +64,6 @@ impl Validator for LinkValidator {
                             }
                         });
 
-
                         diagnostics.push(ValidationDiagnostic::Warning {
                             check_id: check_id.to_string(),
                             message: format!(
@@ -75,6 +79,17 @@ impl Validator for LinkValidator {
         }
 
         diagnostics
+    }
+
+    #[cfg(any(target_arch = "wasm32"))]
+    fn validate(
+        &self,
+        json_check: &serde_json::Value,
+        check_id: &str,
+    ) -> Vec<ValidationDiagnostic> {
+        _ = json_check;
+        _ = check_id;
+        Vec::new()
     }
 }
 
@@ -121,7 +136,7 @@ mod tests {
         let json_value: serde_json::Value =
             serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let validator = LinkValidator{};
+        let validator = LinkValidator {};
         let validation_result = validator.validate(&json_value, "156F64");
 
         assert!(validation_result.is_empty());
@@ -167,7 +182,7 @@ mod tests {
         let json_value: serde_json::Value =
             serde_yaml::from_str(input).expect("Unable to parse yaml");
 
-        let validator = LinkValidator{};
+        let validator = LinkValidator {};
         let validation_result = validator.validate(&json_value, "156F64");
 
         assert_eq!(validation_result.len(), 2);

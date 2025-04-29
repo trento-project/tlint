@@ -21,14 +21,18 @@ impl Validator for LinkValidator {
         let remediation = json_check
             .get("remediation")
             .map_or_else(|| String::new(), |v| v.to_string())
-            .replace("\\n", " ");
+            .replace("\\n", " ")
+            .replace("\\r", " ")
+            .replace("\\t", " ");
         let content = InputContent::from_string(&remediation, FileType::Markdown);
         let remediation_links = extractor.extract(&content);
 
         let description = json_check
             .get("description")
             .map_or_else(|| String::new(), |v| v.to_string())
-            .replace("\\n", " ");
+            .replace("\\n", " ")
+            .replace("\\r", " ")
+            .replace("\\t", " ");
         let content = InputContent::from_string(&description, FileType::Markdown);
         let description_links = extractor.extract(&content);
 

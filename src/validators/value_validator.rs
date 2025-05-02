@@ -48,8 +48,7 @@ fn validate_values(
                             check_id: check_id.to_string(),
                             message: error.to_string(),
                             instance_path: format!(
-                                "/values/{:?}/conditions/{:?}",
-                                value_index, condition_index
+                                "/values/{value_index:?}/conditions/{condition_index:?}"
                             ),
                         }
                     })

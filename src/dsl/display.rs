@@ -3,7 +3,7 @@ use colored::*;
 
 fn check_header(head: &str) -> String {
     let padding = 16 - head.len() - 4;
-    let mut header = format!("  {}  ", head);
+    let mut header = format!("  {head}  ");
     for _ in 0..padding {
         header.push(' ');
     }

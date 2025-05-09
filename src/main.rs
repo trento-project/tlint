@@ -136,7 +136,7 @@ fn main() -> Result<(), serde_yaml::Error> {
                                 instance_path,
                             } => {
                                 println!("{} - {}", validation::warning_header(&check_id), message);
-                                println!("  path: {}\n", instance_path);
+                                println!("  path: {instance_path}\n");
                             }
                             ValidationDiagnostic::Critical {
                                 check_id,
@@ -144,7 +144,7 @@ fn main() -> Result<(), serde_yaml::Error> {
                                 instance_path,
                             } => {
                                 println!("{} - {}", validation::error_header(&check_id), message);
-                                println!("  path: {}\n", instance_path);
+                                println!("  path: {instance_path}\n");
                             }
                         });
 
@@ -183,7 +183,7 @@ fn main() -> Result<(), serde_yaml::Error> {
                                         validation::warning_header(&check_id),
                                         message
                                     );
-                                    println!("  path: {}\n", instance_path);
+                                    println!("  path: {instance_path}\n");
                                 }
                                 ValidationDiagnostic::Critical {
                                     check_id,
@@ -195,7 +195,7 @@ fn main() -> Result<(), serde_yaml::Error> {
                                         validation::error_header(&check_id),
                                         message
                                     );
-                                    println!("  path: {}\n", instance_path);
+                                    println!("  path: {instance_path}\n");
                                 }
                             });
                         1

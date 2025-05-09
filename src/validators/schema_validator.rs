@@ -25,16 +25,15 @@ fn collect_deprecations(
             })
             .map(|annotation| {
                 let err_description = match annotation.instance_location().last().unwrap() {
-                    jsonschema::paths::PathChunk::Property(name) => format!("Property '{}'", name),
-                    jsonschema::paths::PathChunk::Index(idx) => format!("Element[{}]", idx),
-                    jsonschema::paths::PathChunk::Keyword(name) => format!("Keyword '{}'", name),
+                    jsonschema::paths::PathChunk::Property(name) => format!("Property '{name}'"),
+                    jsonschema::paths::PathChunk::Index(idx) => format!("Element[{idx}]"),
+                    jsonschema::paths::PathChunk::Keyword(name) => format!("Keyword '{name}'"),
                 };
 
                 ValidationDiagnostic::Warning {
                     check_id: check_id.to_string(),
                     message: format!(
-                        "{} is deprecated and will be removed in the future",
-                        err_description
+                        "{err_description} is deprecated and will be removed in the future"
                     ),
                     instance_path: annotation.instance_location().to_string(),
                 }

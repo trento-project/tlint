@@ -23,14 +23,14 @@ fn validate_string_expression(
     index: usize,
     allow_interpolated_strings: bool,
 ) -> Result<(), ValidationDiagnostic> {
-    match engine.compile(format!("`{}`", expression)) {
+    match engine.compile(format!("`{expression}`")) {
         Ok(ast) => {
             let statements = ast.statements();
             if statements.len() > 1 {
                 return Err(ValidationDiagnostic::Critical {
                     check_id: check_id.to_string(),
                     message: "Too many statements".to_string(),
-                    instance_path: format!("/expectations/{:?}", index).to_string(),
+                    instance_path: format!("/expectations/{index:?}").to_string(),
                 });
             }
 
@@ -42,7 +42,7 @@ fn validate_string_expression(
                             Err(ValidationDiagnostic::Critical {
                                 check_id: check_id.to_string(),
                                 message: "String interpolation is not allowed here".to_string(),
-                                instance_path: format!("/expectations/{:?}", index).to_string(),
+                                instance_path: format!("/expectations/{index:?}").to_string(),
                             })
                         } else {
                             Ok(())
@@ -51,20 +51,20 @@ fn validate_string_expression(
                     _ => Err(ValidationDiagnostic::Critical {
                         check_id: check_id.to_string(),
                         message: "Field has to be a string".to_string(),
-                        instance_path: format!("/expectations/{:?}", index).to_string(),
+                        instance_path: format!("/expectations/{index:?}").to_string(),
                     }),
                 },
                 _ => Err(ValidationDiagnostic::Critical {
                     check_id: check_id.to_string(),
                     message: "Field has to be an expression".to_string(),
-                    instance_path: format!("/expectations/{:?}", index).to_string(),
+                    instance_path: format!("/expectations/{index:?}").to_string(),
                 }),
             }
         }
         Err(error) => Err(ValidationDiagnostic::Critical {
             check_id: check_id.to_string(),
             message: error.to_string(),
-            instance_path: format!("/expectations/{:?}", index).to_string(),
+            instance_path: format!("/expectations/{index:?}").to_string(),
         }),
     }
 }
@@ -80,7 +80,7 @@ fn validate_expect_enum_content(
         results.push(Err(ValidationDiagnostic::Critical {
             check_id: check_id.to_string(),
             message: "passing return value not found".to_string(),
-            instance_path: format!("/expectations/{:?}", index).to_string(),
+            instance_path: format!("/expectations/{index:?}").to_string(),
         }));
     }
 
@@ -88,7 +88,7 @@ fn validate_expect_enum_content(
         results.push(Err(ValidationDiagnostic::Critical {
       check_id: check_id.to_string(),
       message: "warning return value not found. Consider using `expect` expression if a warning return is not needed".to_string(),
-      instance_path: format!("/expectations/{:?}", index).to_string(),
+      instance_path: format!("/expectations/{index:?}").to_string(),
     }));
     }
 
@@ -133,7 +133,7 @@ fn validate_expectations(
                 Err(error) => results.push(Err(ValidationDiagnostic::Critical {
                     check_id: check_id.to_string(),
                     message: error.to_string(),
-                    instance_path: format!("/expectations/{:?}", index).to_string(),
+                    instance_path: format!("/expectations/{index:?}").to_string(),
                 })),
             }
 
@@ -156,7 +156,7 @@ fn validate_expectations(
                     check_id: check_id.to_string(),
                     message: "warning_message is only available for expect_enum expectations"
                         .to_string(),
-                    instance_path: format!("/expectations/{:?}", index).to_string(),
+                    instance_path: format!("/expectations/{index:?}").to_string(),
                 }));
             } else if warning_message.is_some() {
                 let warning_message_expression = warning_message.unwrap().as_str().unwrap();

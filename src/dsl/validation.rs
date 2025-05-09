@@ -9,11 +9,11 @@ use rhai::Engine;
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
 
 pub fn error_header(head: &str) -> String {
-    format!("  {}  ", head).on_red().black().to_string()
+    format!("  {head}  ").on_red().black().to_string()
 }
 
 pub fn warning_header(head: &str) -> String {
-    format!("  {}  ", head).on_yellow().black().to_string()
+    format!("  {head}  ").on_yellow().black().to_string()
 }
 
 pub fn validate(

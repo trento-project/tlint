@@ -23,3 +23,75 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install Clippy
+        run: rustup component add clippy
+
+      - name: Run Clippy
+        id: clippy
+        continue-on-error: true
+        run: cargo clippy 
+
+      - name: No more lint errors
+        if: steps.clippy.outcome == 'success' && github.event_name == 'pull_request'
+        id: clippy_ok
+        run: echo "COMMENT_MSG=Congratulations! You have solved all the lint issues. 🎉\n\nPlease consider opening a PR to make the CI fail on lint errors from now on." >> $GITHUB_OUTPUT
+
+      - name: Some lint errors still found
+        if: steps.clippy.outcome == 'failure' && github.event_name == 'pull_request'
+        id: clippy_ko
+        run: echo "COMMENT_MSG=There are still some lint errors. Keep working on it! 💪\n\nPlease consider opening a PR to fix some of those lint errors." >> $GITHUB_OUTPUT
+          
+      - name: Comment on PR
+        if: success() && github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const uniqueMarker = '<!-- clippy-lint-comment -->';
+            const commentMsg = "${{ steps.clippy_ko.outputs.comment_msg }}${{ steps.clippy_ok.outputs.comment_msg }}";
+            const body = `${uniqueMarker}\n\n${commentMsg}`;
+
+            (async () => {
+          
+              // Get all comments on the PR
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+              });
+        
+              // Try to find an existing comment with the unique marker
+              const existing = comments.find(comment =>
+                comment.body && comment.body.includes(uniqueMarker)
+              );
+        
+              if (existing) {
+                // Update the existing comment
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                // Create a new comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  body,
+                });
+              }
+
+            })()
+            .catch(error => {
+              console.error('Error creating/updating comment:', error);
+            });

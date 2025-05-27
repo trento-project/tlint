@@ -14,10 +14,5 @@ pub fn validate(
 ) -> Result<(), Vec<ValidationDiagnostic>> {
     let json_schema = validation::get_json_schema();
 
-    validation::validate(
-        &json_check,
-        &check_id,
-        &json_schema,
-        &engine,
-    )
+    validation::validate(&json_check, &check_id, &json_schema, &engine)
 }

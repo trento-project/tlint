@@ -102,15 +102,10 @@ fn normalize_rules(rules: Vec<ArgValidator>) -> Vec<EnabledValidator> {
             EnabledValidator::Value,
         ]
     } else {
-        let mut enabled_validators = Vec::<EnabledValidator>::new();
-        for val in rules {
-            let enabled_validator: Option<EnabledValidator> = val.into();
-            if let Some(enabled_validator) = enabled_validator {
-                enabled_validators.push(enabled_validator);
-            };
-        }
-
-        enabled_validators
+        rules
+            .iter()
+            .filter_map(|val| Into::<Option<EnabledValidator>>::into(*val))
+            .collect()
     }
 }
 
@@ -119,7 +114,7 @@ fn main() -> Result<(), serde_yaml::Error> {
     let engine = Engine::new();
 
     match args.command {
-        Commands::Lint { file, rule: rules } => match is_directory(file.clone()) {
+        Commands::Lint { file, rule } => match is_directory(file.clone()) {
             true => {
                 if let Some(directory) = file {
                     let json_schema = validation::get_json_schema();
@@ -147,14 +142,14 @@ fn main() -> Result<(), serde_yaml::Error> {
                                 }
                                 Ok(check) => {
                                     let check_id = check.id;
-                                    let rules = normalize_rules(rules.clone());
+                                    let normalized_rules = normalize_rules(rule.clone());
 
                                     validation::validate(
                                         &json_value,
                                         &check_id,
                                         &json_schema,
                                         &engine,
-                                        &rules,
+                                        &normalized_rules,
                                     )
                                 }
                             }
@@ -209,9 +204,9 @@ fn main() -> Result<(), serde_yaml::Error> {
                 let check = deserialization_result.unwrap();
                 let check_id = check.id;
                 let json_schema = validation::get_json_schema();
-                let rules = normalize_rules(rules);
+                let normalized_rules = normalize_rules(rule);
                 let validation_result =
-                    validation::validate(&json_value, &check_id, &json_schema, &engine, &rules);
+                    validation::validate(&json_value, &check_id, &json_schema, &engine, &normalized_rules);
 
                 let exit_code = match validation_result {
                     Ok(_) => 0,

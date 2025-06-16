@@ -1,39 +1,44 @@
 # TLint
-
 Validation engine for Trento Checks DSL.
 
 ## Usage
+```sh
+$ tlint -h
+tlint 0.9.4
 
-TLint is used to easily check whether [Trento Checks][checks] are valid and
-up-to-date.
+USAGE:
+    tlint <SUBCOMMAND>
 
-TLint accepts checks from standard input (until EOF):
+OPTIONS:
+    -h, --help       Print help information
+    -V, --version    Print version information
+
+SUBCOMMANDS:
+    help    Print this message or the help of the given subcommand(s)
+    lint
+    show
+
+```
+
+TLint accepts standard input (until EOF):
 
 ```sh
 $ cat check.yml | target/debug/tlint lint
   156F64   - expectations - List must not be empty
 ```
 
-Furthermore, you can use a positional argument to read a check, directly.
+Or you can use the `-f` option to directly let TLint pick a file.
 
 ```sh
 $ tlint lint -f check.yml
   156F64   - expectations - List must not be empty
 ```
 
-You can opt into or opt out of rules by using the `--rules` option. This can be
-useful for skipping link validation. See `--help` for possible rules.
-
 ## Running TLint over Docker
+Currently if you don't want to build TLint yourself the most convenient solution is to run TLint over Docker.
 
-Currently, if you don't want to build TLint yourself, the most convenient
-solution is to run TLint over Docker.
-
-To make this process more convenient, you can put this alias into your shell
-configuration (~/.bashrc or equivalent):
+You can put this useful alias into your shell configuration:
 
 ```sh
 alias tlint='docker run --rm -i -v ${PWD}:/data ghcr.io/trento-project/tlint:latest'
 ```
-
-[checks]: https://github.com/trento-project/checks/

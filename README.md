@@ -27,12 +27,14 @@ $ cat check.yml | target/debug/tlint lint
   156F64   - expectations - List must not be empty
 ```
 
-Or you can use the `-f` option to directly let TLint pick a file.
+Or you can use the positional argument to directly let TLint pick a file.
 
 ```sh
-$ tlint lint -f check.yml
+$ tlint lint check.yml
   156F64   - expectations - List must not be empty
 ```
+
+If you need to, you can opt out of some validation rules via the `--rule` position.
 
 ## Running TLint over Docker
 Currently if you don't want to build TLint yourself the most convenient solution is to run TLint over Docker.

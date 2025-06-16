@@ -35,6 +35,7 @@ $ tlint lint check.yml
 ```
 
 If you need to, you can opt out of some validation rules via the `--rule` option.
+This can be useful when you want to skip the link validation.
 
 ## Running TLint over Docker
 Currently if you don't want to build TLint yourself the most convenient solution is to run TLint over Docker.

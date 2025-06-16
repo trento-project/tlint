@@ -17,7 +17,7 @@ $ cat check.yml | target/debug/tlint lint
 Furthermore, you can use a positional argument to read a check, directly.
 
 ```sh
-$ tlint lint check.yml
+$ tlint lint -f check.yml
   156F64   - expectations - List must not be empty
 ```
 

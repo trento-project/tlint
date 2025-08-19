@@ -3,6 +3,8 @@
 TLint web runs `+tlint+` checks on a web application running `+tlint+`
 as web assembly code.
 
+NOTE: The web application source code is located in the `www/` directory.
+
 === Development
 
 Use `+rustup+` to install and configure `+rust+`. Compiled version of

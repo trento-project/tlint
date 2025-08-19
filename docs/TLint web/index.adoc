@@ -1,11 +1,9 @@
-== TLint web
+= TLint web
 
 TLint web runs `+tlint+` checks on a web application running `+tlint+`
 as web assembly code.
 
-NOTE: The web application source code is located in the `www/` directory.
-
-=== Development
+== Development
 
 Use `+rustup+` to install and configure `+rust+`. Compiled version of
 `+rust+` distributed in SUSE repositories doesn’t match with downloaded
@@ -21,7 +19,7 @@ npm run build
 npm run serve
 ....
 
-=== Docker
+== Docker
 
 Build TLint web docker image running:
 

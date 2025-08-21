@@ -10,7 +10,7 @@ Use `rustup` to install and configure `rust`. Compiled version of
 `rust` distributed in SUSE repositories doesn't match with downloaded
 version of `wasm`.
 
-Get `wasm-pack` link:https://rustwasm.github.io/wasm-pack/installer/[here].
+Get `wasm-pack` link:https://drager.github.io/wasm-pack/[here].
 
 [source,sh]
 ----

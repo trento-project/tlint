@@ -52,8 +52,8 @@ RUN set -euo pipefail; zypper -n clean -a; \
 # Define labels according to https://en.opensuse.org/Building_derived_containers
 # labelprefix=com.suse.trento
 LABEL org.opencontainers.image.authors="https://github.com/trento-project/tlint/graphs/contributors"
-LABEL org.opencontainers.image.title="Trento Checks Ecosystem Linting Tool"
-LABEL org.opencontainers.image.description="Trento Checks Ecosystem Linting Tool"
+LABEL org.opencontainers.image.title="TLint"
+LABEL org.opencontainers.image.description="Validation engine for Trento Checks DSL"
 LABEL org.opencontainers.image.documentation="https://www.trento-project.io/docs/tlint/README.html"
 LABEL org.opencontainers.image.version="devel"
 LABEL org.opencontainers.image.url="https://github.com/trento-project/tlint"
@@ -61,10 +61,10 @@ LABEL org.opencontainers.image.url="https://github.com/trento-project/tlint"
 LABEL org.opencontainers.image.vendor="SUSE LLC"
 LABEL org.opencontainers.image.source="https://github.com/trento-project/tlint"
 LABEL org.opencontainers.image.ref.name="${OS_VER}-devel"
-LABEL org.opensuse.reference="registry.suse.com/bci/bci-micro:${OS_VER}"
+LABEL org.opensuse.reference="registry.suse.com/bci/bci-base:${OS_VER}"
 LABEL org.openbuildservice.disturl="https://github.com/trento-project/tlint/pkgs/container/tlint"
 # endlabelprefix
-LABEL org.opencontainers.image.base.name="registry.suse.com/bci/bci-micro:${OS_VER}"
+LABEL org.opencontainers.image.base.name="registry.suse.com/bci/bci-base:${OS_VER}"
 LABEL org.opencontainers.image.base.digest="latest"
 LABEL io.artifacthub.package.logo-url="https://www.trento-project.io/images/trento-icon.svg"
 LABEL io.artifacthub.package.readme-url="https://raw.githubusercontent.com/trento-project/tlint/refs/heads/main/README.adoc"

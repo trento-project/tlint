@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: SUSE LLC
+# SPDX-License-Identifier: Apache-2.0
+
 # Configure rustup-less wasm
 # https://rustwasm.github.io/wasm-pack/book/prerequisites/non-rustup-setups.html
 FROM opensuse/tumbleweed AS wasm-setup

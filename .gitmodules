@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: SUSE LLC
+# SPDX-License-Identifier: Apache-2.0
+
 [submodule "wanda"]
 	path = wanda
 	url = https://github.com/trento-project/wanda

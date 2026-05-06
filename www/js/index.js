@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: SUSE LLC
+// SPDX-License-Identifier: Apache-2.0
+
 import {basicSetup, EditorView} from "codemirror"
 import {yaml} from "@codemirror/lang-yaml"
 

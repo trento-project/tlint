@@ -22,9 +22,10 @@ header:
     - ".github/CODEOWNERS"
     - ".github/dependabot.yml"
     - ".tool-versions"
+    - "Cargo.lock"
     - "LICENSE"
     - "VERSION"
-    - "Cargo.lock"
+    - "tests/fixtures/**"
 
   language:
     JavaScript:

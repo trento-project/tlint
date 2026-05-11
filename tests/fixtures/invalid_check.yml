@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: SUSE LLC
-# SPDX-License-Identifier: Apache-2.0
-
 # id: 156F64
 name: Corosync configuration file
 group: Corosync

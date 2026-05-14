@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: SUSE LLC
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::dsl::types::{ValidationDiagnostic, Validator};
 use jsonschema::{output::BasicOutput, JSONSchema};
 use serde_json;

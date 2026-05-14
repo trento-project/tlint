@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: SUSE LLC
+// SPDX-License-Identifier: Apache-2.0
+
 use wasm_bindgen::prelude::*;
 use serde::{Serialize, Deserialize};
 use rhai::Engine;

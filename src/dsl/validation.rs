@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: SUSE LLC
+// SPDX-License-Identifier: Apache-2.0
+
 use super::types::{ValidationDiagnostic, Validator};
 use crate::validators::expectation_validator::ExpectationValidator;
 use crate::validators::link_validator::LinkValidator;

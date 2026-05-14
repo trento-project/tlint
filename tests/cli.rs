@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: SUSE LLC
+// SPDX-License-Identifier: Apache-2.0
+
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use std::process::Command;

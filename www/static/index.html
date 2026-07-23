@@ -4,25 +4,303 @@
 -->
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>TLint</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TLint &middot; Trento Checks DSL validator</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2330BA78'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='18' font-weight='700' fill='%230B332B' text-anchor='middle'%3ET%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=SUSE:wght@400;600;700&family=SUSE+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --suse-green: #30BA78;
+        --suse-green-dark: #0B332B;
+        --suse-midnight: #192072;
+        --ink: #1A1A1A;
+        --muted: #5B6B66;
+        --border: #D8E3DE;
+        --surface: #FFFFFF;
+        --canvas: #F4F8F6;
+        --danger: #B3261E;
+        --danger-bg: #FBEAE9;
+        --success-bg: #E8F7F0;
+        --font-ui: "SUSE", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-mono: "SUSE Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 2.5rem 1.25rem;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: var(--font-ui);
+      }
+
+      #wrapper {
+        width: 100%;
+        max-width: 860px;
+        margin: 0 auto;
+      }
+
+      #loading {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      .spinner {
+        width: 1.1rem;
+        height: 1.1rem;
+        border: 2px solid var(--border);
+        border-top-color: var(--suse-green);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 2.1rem;
+        font-weight: 700;
+        color: var(--suse-green-dark);
+        letter-spacing: -0.01em;
+      }
+
+      header .tagline {
+        margin: 0.35rem 0 0;
+        color: var(--muted);
+      }
+
+      main p.intro {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      main p.intro code {
+        font-family: var(--font-mono);
+        background: var(--border);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.3rem;
+        font-size: 0.9em;
+      }
+
+      #editor {
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        background: var(--surface);
+        font-family: var(--font-mono);
+        box-shadow: 0 1px 2px rgba(11, 51, 43, 0.06);
+      }
+
+      .cm-editor {
+        height: 320px;
+      }
+
+      .cm-editor.cm-focused {
+        outline: 2px solid var(--suse-green);
+        outline-offset: -1px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        margin: 1rem 0;
+      }
+
+      button {
+        font-family: var(--font-ui);
+        font-size: 0.95rem;
+        font-weight: 600;
+        padding: 0.55rem 1.4rem;
+        border-radius: 0.5rem;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: background-color 0.15s ease, opacity 0.15s ease;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      #submit {
+        background: var(--suse-green);
+        color: var(--suse-green-dark);
+      }
+
+      #submit:hover:not(:disabled) {
+        background: #29a568;
+      }
+
+      #reset, #load-example {
+        background: transparent;
+        color: var(--muted);
+        border-color: var(--border);
+      }
+
+      #reset:hover:not(:disabled), #load-example:hover:not(:disabled) {
+        background: var(--border);
+      }
+
+      .link-button {
+        background: none;
+        border: none;
+        padding: 0;
+        margin-left: 0.3rem;
+        color: var(--suse-midnight);
+        font: inherit;
+        font-weight: 600;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      .spec-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(440px, 100vw);
+        height: 100vh;
+        background: var(--surface);
+        box-shadow: -2px 0 12px rgba(11, 51, 43, 0.15);
+        transform: translateX(100%);
+        transition: transform 0.2s ease;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .spec-panel.open {
+        transform: translateX(0);
+      }
+
+      .spec-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        color: var(--suse-green-dark);
+      }
+
+      .spec-panel__header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+
+      .spec-panel__header .icon-button {
+        background: none;
+        border: none;
+        font-size: 1.4rem;
+        line-height: 1;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 0 0.3rem;
+        text-decoration: none;
+      }
+
+      .spec-panel__header .icon-button:hover {
+        color: var(--ink);
+      }
+
+      #spec-frame {
+        flex: 1;
+        border: none;
+      }
+
+      #result {
+        min-height: 1.5rem;
+        padding: 0;
+        border-radius: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        transition: padding 0.15s ease;
+      }
+
+      #result:not(:empty) {
+        padding: 0.85rem 1rem;
+      }
+
+      #result.pending {
+        background: var(--border);
+        color: var(--muted);
+      }
+
+      #result.ok {
+        background: var(--success-bg);
+        color: var(--suse-green-dark);
+      }
+
+      #result.error {
+        background: var(--danger-bg);
+        color: var(--danger);
+      }
+
+      footer {
+        margin-top: 2rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      footer a {
+        color: var(--suse-midnight);
+      }
+    </style>
   </head>
   <body>
     <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
-    <div id="wrapper" style="width:920px;margin:auto;">
+    <div id="wrapper">
       <div id="loading">
-        <div>Loading TLint...</div>
+        <span class="spinner" aria-hidden="true"></span>
+        <span>Loading TLint&hellip;</span>
       </div>
-      <div id="main" style="display:none;float:left;width:100%;">
-        <h1>TLint</h1>
-        <p>Paste in your Trento check and click "Go" - we'll tell you if it's valid or not.</p>
-        <div id="editor" style="background-color:white;float:left;height:300px;width:100%;overflow-y:scroll;"></div>
-        <input type="submit" value="Go" id="submit" />
-        <input type="submit" value="Reset" id="reset" />
-        <div id="result" style="color:white;width:100%;padding:10px;white-space:pre"></div>
+      <div id="main" style="display:none;">
+        <header>
+          <h1>TLint</h1>
+          <p class="tagline">Validation engine for the Trento Checks DSL</p>
+        </header>
+        <main>
+          <p class="intro">
+            Paste a Trento check below and select <strong>Go</strong> &mdash; TLint runs entirely in your browser via WebAssembly, so nothing you paste leaves this page.
+            <button id="open-spec" class="link-button" type="button">View the check spec</button>
+          </p>
+          <div id="editor" aria-label="Trento check YAML editor"></div>
+          <div class="actions">
+            <button id="submit" type="button">Go</button>
+            <button id="reset" type="button">Reset</button>
+            <button id="load-example" type="button">Load example</button>
+          </div>
+          <div id="result" role="status" aria-live="polite"></div>
+        </main>
+        <footer>
+          <a href="https://github.com/trento-project/tlint">TLint</a> is part of the <a href="https://www.trento-project.io/">Trento Project</a>.
+        </footer>
       </div>
+    </div>
+    <div id="spec-panel" class="spec-panel" aria-hidden="true">
+      <div class="spec-panel__header">
+        <span>Check DSL spec</span>
+        <div class="spec-panel__header-actions">
+          <a id="expand-spec" class="icon-button" target="_blank" rel="noopener noreferrer" aria-label="Open spec in a new tab">&#8599;</a>
+          <button id="close-spec" class="icon-button" type="button" aria-label="Close spec panel">&times;</button>
+        </div>
+      </div>
+      <iframe id="spec-frame" title="Trento check DSL specification"></iframe>
     </div>
     <script src="main.js"></script>
   </body>

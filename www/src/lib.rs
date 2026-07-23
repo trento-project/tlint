@@ -13,12 +13,25 @@ struct ValidationResult {
     pub messages: Vec<String>
 }
 
+#[wasm_bindgen(start)]
+pub fn init() {
+    console_error_panic_hook::set_once();
+}
+
 #[wasm_bindgen]
 pub fn lint(content: String) -> JsValue {
     let engine = Engine::new_raw();
 
-    let json_value: serde_json::Value = serde_yaml::from_str(&content)
-        .expect("Unable to parse the YAML into a JSON payload");
+    let json_value: serde_json::Value = match serde_yaml::from_str(&content) {
+        Ok(value) => value,
+        Err(error) => {
+            let r = ValidationResult {
+                result: false,
+                messages: vec![error.to_string()],
+            };
+            return serde_wasm_bindgen::to_value(&r).unwrap();
+        }
+    };
     let deserialization_result = serde_yaml::from_str::<Check>(&content);
 
     let r = match deserialization_result {

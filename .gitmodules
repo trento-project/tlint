@@ -5,3 +5,4 @@
 	path = wanda
 	url = https://github.com/trento-project/wanda
 	branch = main
+	shallow = true

@@ -65,8 +65,16 @@ fn get_input(file: Option<String>) -> String {
     let mut payload = String::new();
     match file {
         Some(file_path) => {
-            let mut file = File::open(file_path).expect("Unable to open file");
-            file.read_to_string(&mut payload).expect("");
+            let mut file = File::open(&file_path).unwrap_or_else(|err| {
+                let reason = if err.kind() == io::ErrorKind::NotFound {
+                    "No such file or directory".to_string()
+                } else {
+                    err.to_string()
+                };
+                eprintln!("Unable to open file '{file_path}': {reason}");
+                process::exit(1);
+            });
+            file.read_to_string(&mut payload).expect("Unable to read file");
         }
         None => {
             io::stdin()

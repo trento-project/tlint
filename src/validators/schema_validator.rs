@@ -2,49 +2,51 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::dsl::types::{ValidationDiagnostic, Validator};
-use jsonschema::{output::BasicOutput, JSONSchema};
+use jsonschema::{paths::LocationSegment, Validator as JsonSchemaValidator};
 use serde_json;
 
 pub struct SchemaValidator<'a> {
-    pub schema: &'a JSONSchema,
+    pub schema: &'a JsonSchemaValidator,
 }
 
 fn collect_deprecations(
     json_check: &serde_json::Value,
     check_id: &str,
-    schema: &JSONSchema,
+    schema: &JsonSchemaValidator,
 ) -> Vec<ValidationDiagnostic> {
-    match schema.apply(json_check).basic() {
-        // FIXME: crate jsonschema does not resolve "$ref" to type definitions and therefore can
-        // not detect deprecations in linked types
-        BasicOutput::Valid(annotations) => annotations
-            .into_iter()
-            .filter(|annotation| match annotation.value().get("deprecated") {
-                Some(val) => match val.as_bool() {
-                    Some(is_deprecated) => is_deprecated,
-                    None => false,
-                },
-                None => false,
-            })
-            .map(|annotation| {
-                let err_description = match annotation.instance_location().last().unwrap() {
-                    jsonschema::paths::PathChunk::Property(name) => format!("Property '{name}'"),
-                    jsonschema::paths::PathChunk::Index(idx) => format!("Element[{idx}]"),
-                    jsonschema::paths::PathChunk::Keyword(name) => format!("Keyword '{name}'"),
-                };
+    let evaluation = schema.evaluate(json_check);
 
-                ValidationDiagnostic::Warning {
-                    check_id: check_id.to_string(),
-                    message: format!(
-                        "{err_description} is deprecated and will be removed in the future"
-                    ),
-                    instance_path: annotation.instance_location().to_string(),
-                }
-            })
-            .collect::<Vec<_>>(),
-
-        BasicOutput::Invalid(_) => vec![],
+    // FIXME: crate jsonschema does not resolve "$ref" to type definitions and therefore can
+    // not detect deprecations in linked types
+    if !evaluation.flag().valid {
+        return vec![];
     }
+
+    evaluation
+        .iter_annotations()
+        .filter(|annotation| match annotation.annotations.value().get("deprecated") {
+            Some(val) => match val.as_bool() {
+                Some(is_deprecated) => is_deprecated,
+                None => false,
+            },
+            None => false,
+        })
+        .map(|annotation| {
+            let err_description = match annotation.instance_location.iter().last() {
+                Some(LocationSegment::Property(name)) => format!("Property '{name}'"),
+                Some(LocationSegment::Index(idx)) => format!("Element[{idx}]"),
+                None => "Root".to_string(),
+            };
+
+            ValidationDiagnostic::Warning {
+                check_id: check_id.to_string(),
+                message: format!(
+                    "{err_description} is deprecated and will be removed in the future"
+                ),
+                instance_path: annotation.instance_location.to_string(),
+            }
+        })
+        .collect::<Vec<_>>()
 }
 
 impl<'a> Validator for SchemaValidator<'a> {
@@ -60,20 +62,18 @@ impl<'a> Validator for SchemaValidator<'a> {
 fn validate_schema(
     json_check: &serde_json::Value,
     check_id: &str,
-    schema: &JSONSchema,
+    schema: &JsonSchemaValidator,
 ) -> Vec<ValidationDiagnostic> {
     let deprecation_warnings = collect_deprecations(json_check, check_id, schema);
 
-    let mut validation_errors = match schema.validate(json_check) {
-        Ok(_) => vec![],
-        Err(errors) => errors
-            .map(|error| ValidationDiagnostic::Critical {
-                check_id: check_id.to_string(),
-                message: error.to_string(),
-                instance_path: error.instance_path.to_string(),
-            })
-            .collect(),
-    };
+    let mut validation_errors: Vec<ValidationDiagnostic> = schema
+        .iter_errors(json_check)
+        .map(|error| ValidationDiagnostic::Critical {
+            check_id: check_id.to_string(),
+            message: error.to_string(),
+            instance_path: error.instance_path().to_string(),
+        })
+        .collect();
 
     validation_errors.extend(deprecation_warnings);
     validation_errors
@@ -136,10 +136,7 @@ mod tests {
                 check_id,
             } => {
                 assert_eq!(check_id, expected_check_id);
-                assert_eq!(
-                    message,
-                    "Additional properties are not allowed ('whens' was unexpected)"
-                );
+                assert_eq!(message, "\"when\" is a required property");
                 assert_eq!(instance_path, "/values/0/conditions/1");
             }
         };
@@ -152,7 +149,10 @@ mod tests {
                 check_id,
             } => {
                 assert_eq!(check_id, expected_check_id);
-                assert_eq!(message, "\"when\" is a required property");
+                assert_eq!(
+                    message,
+                    "Additional properties are not allowed ('whens' was unexpected)"
+                );
                 assert_eq!(instance_path, "/values/0/conditions/1");
             }
         };

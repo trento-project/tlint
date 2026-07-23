@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: SUSE LLC
 # SPDX-License-Identifier: Apache-2.0
 
-ARG RUST_VERSION=1.88
+ARG RUST_VERSION=1.96
 ARG OS_VER=15.7
 
 # Base build image

@@ -7,7 +7,7 @@ use crate::validators::link_validator::LinkValidator;
 use crate::validators::schema_validator::SchemaValidator;
 use crate::validators::value_validator::ValueValidator;
 use colored::*;
-use jsonschema::{Draft, JSONSchema};
+use jsonschema::{Draft, Validator as JsonSchemaValidator};
 use rhai::Engine;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -31,7 +31,7 @@ pub fn warning_header(head: &str) -> String {
 pub fn validate(
     json_check: &serde_json::Value,
     check_id: &str,
-    schema: &JSONSchema,
+    schema: &JsonSchemaValidator,
     engine: &Engine,
     enabled: &Vec<EnabledValidator>,
 ) -> Result<(), Vec<ValidationDiagnostic>> {
@@ -69,13 +69,13 @@ pub fn validate(
     Err(errors)
 }
 
-pub fn get_json_schema() -> JSONSchema {
+pub fn get_json_schema() -> JsonSchemaValidator {
     let value = serde_json::from_str(SCHEMA)
         .expect("a valid JSON schema should be embedded during compilation");
 
-    let compiled_schema = JSONSchema::options()
+    let compiled_schema = jsonschema::options()
         .with_draft(Draft::Draft201909)
-        .compile(&value)
+        .build(&value)
         .expect("a JSON schema according to draft 2019-09 aka. Draft 8 should be embedded during compilation");
 
     compiled_schema
@@ -152,10 +152,7 @@ mod tests {
                 check_id,
             } => {
                 assert_eq!(check_id, expected_check_id);
-                assert_eq!(
-                    message,
-                    "Additional properties are not allowed ('whens' was unexpected)"
-                );
+                assert_eq!(message, "\"when\" is a required property");
                 assert_eq!(instance_path, "/values/0/conditions/1");
             }
         };

@@ -63,13 +63,11 @@ impl Validator for LinkValidator {
                 }),
                 Ok(r) => {
                     if !r.status().is_success() {
-                        let details = r.status().details().unwrap_or_else(|| {
-                            if r.status().is_unsupported() {
-                                "Unsupported Format".to_owned()
-                            } else {
-                                r.status().code_as_string()
-                            }
-                        });
+                        let details = if r.status().is_unsupported() {
+                            "Unsupported Format".to_owned()
+                        } else {
+                            r.status().details()
+                        };
 
                         diagnostics.push(ValidationDiagnostic::Warning {
                             check_id: check_id.to_string(),

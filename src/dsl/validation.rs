@@ -6,7 +6,7 @@ use crate::validators::expectation_validator::ExpectationValidator;
 use crate::validators::link_validator::LinkValidator;
 use crate::validators::schema_validator::SchemaValidator;
 use crate::validators::value_validator::ValueValidator;
-use colored::*;
+use colored::Colorize;
 use jsonschema::{Draft, Validator as JsonSchemaValidator};
 use rhai::Engine;
 
@@ -20,20 +20,25 @@ pub enum EnabledValidator {
 
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
 
+#[must_use]
 pub fn error_header(head: &str) -> String {
     format!("  {head}  ").on_red().black().to_string()
 }
 
+#[must_use]
 pub fn warning_header(head: &str) -> String {
     format!("  {head}  ").on_yellow().black().to_string()
 }
 
+/// # Errors
+///
+/// Returns the collected [`ValidationDiagnostic`]s if any enabled validator finds a problem.
 pub fn validate(
     json_check: &serde_json::Value,
     check_id: &str,
     schema: &JsonSchemaValidator,
     engine: &Engine,
-    enabled: &Vec<EnabledValidator>,
+    enabled: &[EnabledValidator],
 ) -> Result<(), Vec<ValidationDiagnostic>> {
     let mut validators = Vec::<&dyn Validator>::new();
 
@@ -69,16 +74,18 @@ pub fn validate(
     Err(errors)
 }
 
+/// # Panics
+///
+/// Panics if the embedded [`SCHEMA`] is not valid JSON or not a valid draft 2019-09 JSON schema.
+#[must_use]
 pub fn get_json_schema() -> JsonSchemaValidator {
     let value = serde_json::from_str(SCHEMA)
         .expect("a valid JSON schema should be embedded during compilation");
 
-    let compiled_schema = jsonschema::options()
+    jsonschema::options()
         .with_draft(Draft::Draft201909)
         .build(&value)
-        .expect("a JSON schema according to draft 2019-09 aka. Draft 8 should be embedded during compilation");
-
-    compiled_schema
+        .expect("a JSON schema according to draft 2019-09 aka. Draft 8 should be embedded during compilation")
 }
 
 #[cfg(test)]

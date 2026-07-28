@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::types::Check;
-use colored::*;
+use colored::Colorize;
 
 fn check_header(head: &str) -> String {
     let padding = 16 - head.len() - 4;

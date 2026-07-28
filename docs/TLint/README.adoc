@@ -4,7 +4,7 @@ Developer guide for the `tlint` command-line tool itself. For end-user usage (in
 
 == Prerequisites
 
-* A Rust toolchain. Install it with https://rustup.rs[rustup]. The version CI builds against is pinned in link:../../.tool-versions[`.tool-versions`] (currently `1.97`); anything reasonably close will work for local development since the crate has no unstable-feature dependencies.
+* A Rust toolchain. Install it with https://rustup.rs[rustup]. The version CI builds against is pinned in link:../../.tool-versions[`.tool-versions`]; anything reasonably close will work for local development since the crate has no unstable-feature dependencies.
 * No other native dependencies are required to build the CLI on its own. (The optional link validator pulls in `lychee-lib`, which brings a TLS stack, but that's handled entirely by Cargo.)
 * The `wanda` git submodule, used only to source the check JSON Schema (see <<the-check-schema>> below). Clone with submodules, or if you already cloned without them:
 +
@@ -30,19 +30,17 @@ cat tests/fixtures/check.yml | cargo run -- lint
 cargo run -- show tests/fixtures/check.yml
 ----
 
-`lint` runs the validators described below and prints one line per diagnostic. `show` parses a check and pretty-prints its id, group, description, remediation and facts — useful for eyeballing that a check deserializes the way you expect.
+`lint` runs the validators described below and prints one line per diagnostic. `show` parses a check and pretty-prints its id, group, description, remediation and facts, useful for eyeballing that a check deserializes the way you expect.
 
 Both subcommands accept an optional positional file argument; without one, they read from stdin until EOF.
 
-The `lint` subcommand also accepts `--rule <name>` (repeatable) to run only a subset of validators — `expectation`, `link`, `schema`, `value`, or `all` (the default). This is handy when iterating on a check and you want to skip the (network-dependent, slower) link validator.
+The `lint` subcommand also accepts `--rule <name>` (repeatable) to run only a subset of validators, `expectation`, `link`, `schema`, `value`, or `all` (the default). This is handy when iterating on a check and you want to skip the (network-dependent, slower) link validator.
 
 == Testing
 
 [source,sh]
 ----
-cargo test           # unit tests (in-module, under each src/**/*.rs) +
-                      # integration tests (tests/cli.rs, against the
-                      # built binary via `assert_cmd`)
+cargo test           # unit tests (in-module, under each src/**/*.rs) and integration tests (tests/cli.rs, against the # built binary via `assert_cmd`)
 cargo test --verbose # same, matching what CI runs
 ----
 
@@ -56,7 +54,7 @@ cargo clippy
 cargo fmt
 ----
 
-CI runs `cargo clippy` (currently non-blocking — see `.github/workflows/rust.yml` — but please keep it clean) and checks that every file carries an SPDX header via https://github.com/apache/skywalking-eyes[skywalking-eyes]. New files should start with:
+CI runs `cargo clippy` (currently non-blocking, see `.github/workflows/rust.yml`, but please keep it clean) and checks that every file carries an SPDX header via https://github.com/apache/skywalking-eyes[skywalking-eyes]. New files should start with:
 
 [source,rust]
 ----
@@ -64,55 +62,36 @@ CI runs `cargo clippy` (currently non-blocking — see `.github/workflows/rust.y
 // SPDX-License-Identifier: Apache-2.0
 ----
 
-(or the equivalent comment syntax for non-Rust files — see existing `.yml`/`.adoc`/`Dockerfile` files for examples).
+(or the equivalent comment syntax for non-Rust files, see existing `.yml`/`.adoc`/`Dockerfile` files for examples).
 
 == Project layout
 
 [source]
 ----
 src/
-  main.rs                          CLI entry point (clap): `lint` and `show`
-                                    subcommands, stdin/file input handling
-  lib.rs                           Library entry point: `validate()`. This
-                                    is what the wasm build (../../www) links
-                                    against directly instead of going
-                                    through the CLI.
+  main.rs                          CLI entry point (clap): `lint` and `show` subcommands, stdin/file input handling.
+  lib.rs                           Library entry point: `validate()`. This is what the wasm build (../../www) links against directly instead of going through the CLI.
   dsl/
-    types.rs                       `Check`, `Fact`, `Value`, `Expectation`,
-                                    `ValidationDiagnostic`, etc. — the Rust
-                                    shape of the DSL, deserialized with serde
-    validation.rs                  Compiles the embedded JSON Schema, wires
-                                    up the enabled validators, and defines
-                                    `EnabledValidator`
-    display.rs                     `show` subcommand's pretty-printer
+    types.rs                       `Check`, `Fact`, `Value`, `Expectation`, `ValidationDiagnostic`, etc., the Rust shape of the DSL, deserialized with serde.
+    validation.rs                  Compiles the embedded JSON Schema, wires up the enabled validators, and defines `EnabledValidator`.
+    display.rs                     `show` subcommand's pretty-printer.
   validators/
-    schema_validator.rs            Validates the parsed check against the
-                                    JSON Schema; also surfaces `deprecated`
-                                    annotations as warnings
-    expectation_validator.rs       Checks that `expect`/`expect_same`/
-                                    `expect_enum` Rhai expressions parse and,
-                                    for `expect_enum`, that they can return
-                                    "passing"/"warning"/"critical"
-    value_validator.rs             Checks that `when` conditions on `values`
-                                    parse as valid Rhai expressions
-    link_validator.rs              Extracts links from `description` and
-                                    `remediation` and checks they resolve,
-                                    via `lychee-lib`. Not available on
-                                    `wasm32` (see below) — stubbed out to a
-                                    no-op there.
-wanda/                             Git submodule (trento-project/wanda);
-                                    only wanda/guides/check_definition.schema.json
-                                    is used, embedded at compile time
+    schema_validator.rs            Validates the parsed check against the JSON Schema; also surfaces `deprecated` annotations as warnings.
+    expectation_validator.rs       Checks that `expect`/`expect_same`/ `expect_enum` Rhai expressions parse and, for `expect_enum`, that they can return "passing"/"warning"/"critical".
+    value_validator.rs             Checks that `when` conditions on `values` parse as valid Rhai expressions.
+    link_validator.rs              Extracts links from `description` and `remediation` and checks they resolve, via `lychee-lib`. Not available on `wasm32` (see below), stubbed out to a no-op there.
+wanda/                             Git submodule (trento-project/wanda); only wanda/guides/check_definition.schema.json is used, embedded at compile time.
 tests/
-  cli.rs                           End-to-end tests against the built binary
-  fixtures/*.yml                   Sample checks used by cli.rs
+  cli.rs                           End-to-end tests against the built binary.
+  fixtures/*.yml                   Sample checks used by cli.rs.
 ----
 
-`src/lib.rs`'s `validate()` deliberately only enables the `Expectation`, `Schema` and `Value` validators — not `Link`. That's intentional: the WebAssembly build that consumes this function runs in a browser sandbox where the kind of outbound network probing `lychee-lib` does isn't available (or desirable), so link checking is a CLI-only feature. If you add a new validator that should also run in the browser, wire it into `lib.rs::validate()`, not just `dsl/validation.rs`.
+`src/lib.rs`'s `validate()` deliberately only enables the `Expectation`, `Schema` and `Value` validators, not `Link`. That's intentional: the WebAssembly build that consumes this function runs in a browser sandbox where the kind of outbound network probing `lychee-lib` does isn't available (or desirable), so link checking is a CLI-only feature. If you add a new validator that should also run in the browser, wire it into `lib.rs::validate()`, not just `dsl/validation.rs`.
 
-`link_validator.rs` itself is split by `#[cfg(not(target_arch = "wasm32"))]` / `#[cfg(target_arch = "wasm32")]` for the same reason — the non-wasm path does the real work, the wasm path is a no-op stub — and its actual dependencies (`lychee-lib`, `smol`, `async-compat`) are declared under `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]` in `Cargo.toml` so they're never even compiled for the wasm target.
+`link_validator.rs` itself is split by `#[cfg(not(target_arch = "wasm32"))]` / `#[cfg(target_arch = "wasm32")]` for the same reason, the non-wasm path does the real work, the wasm path is a no-op stub, and its actual dependencies (`lychee-lib`, `smol`, `async-compat`) are declared under `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]` in `Cargo.toml` so they're never even compiled for the wasm target.
 
 [[the-check-schema]]
+
 == The check schema (wanda submodule)
 
 The canonical definition of what a valid Trento check looks like lives upstream in the https://github.com/trento-project/wanda[wanda] repo, as a JSON Schema. Rather than duplicating it, this repo vendors `wanda` as a git submodule and embeds `wanda/guides/check_definition.schema.json` directly into the `tlint` binary at compile time (`include_str!` in `dsl/validation.rs`), compiled against JSON Schema draft 2019-09.
@@ -124,7 +103,7 @@ If the upstream schema changes (new fields, new deprecations, etc.), pick it up 
 git submodule update --remote wanda
 ----
 
-then rebuild — no code changes should be needed unless the schema introduces a new keyword combination the validators need to special-case (e.g. the `deprecated` annotation handling in `schema_validator.rs`).
+then rebuild, no code changes should be needed unless the schema introduces a new keyword combination the validators need to special-case (e.g. the `deprecated` annotation handling in `schema_validator.rs`).
 
 == Container image
 
@@ -136,12 +115,10 @@ docker run --rm -i -v "$PWD:/data" tlint lint /data/check.yml
 
 The image is a multi-stage build:
 
-* *builder* stage, `registry.suse.com/bci/rust:${RUST_VERSION}` — compiles a release binary. Dependencies are built in a separate cache-mounted layer first (`COPY Cargo.toml Cargo.lock` + stub `src/`) so that source-only changes don't invalidate the dependency cache.
-* final stage, `registry.suse.com/bci/bci-base:${OS_VER}` — just the compiled binary plus the runtime tools it shells out to (`tar`, `gzip`, `xz`, used by some gatherers/checks), with zypper caches and logs cleaned up to keep the image small.
-
-----
+* *builder* stage, `registry.suse.com/bci/rust:${RUST_VERSION}`, compiles a release binary. Dependencies are built in a separate cache-mounted layer first (`COPY Cargo.toml Cargo.lock` + stub `src/`) so that source-only changes don't invalidate the dependency cache.
+* final stage, `registry.suse.com/bci/bci-base:${OS_VER}`, just the compiled binary plus the runtime tools it shells out to (`tar`, `gzip`, `xz`, used by some gatherers/checks), with zypper caches and logs cleaned up to keep the image small.
 
 == CI
 
-* `.github/workflows/rust.yml` — on every push/PR to `main`: builds (`cargo build --release`), tests (`cargo test --verbose`), runs `cargo clippy` (non-blocking, comments on the PR), and checks SPDX license headers.
-* `.github/workflows/docker-publish.yml` — on push to `main`, builds and pushes both `ghcr.io/trento-project/tlint:latest` (this `Dockerfile`) and `ghcr.io/trento-project/tlint-web:latest` (`Dockerfile.www`, see link:../TLint%20web/README.adoc[TLint web]).
+* `.github/workflows/rust.yml`, on every push/PR to `main`: builds (`cargo build --release`), tests (`cargo test --verbose`), runs `cargo clippy` (non-blocking, comments on the PR), and checks SPDX license headers.
+* `.github/workflows/docker-publish.yml`, on push to `main`, builds and pushes both `ghcr.io/trento-project/tlint:latest` (this `Dockerfile`) and `ghcr.io/trento-project/tlint-web:latest` (`Dockerfile.www`, see link:../TLint%20web/README.adoc[TLint web]).

@@ -55,5 +55,5 @@ alias tlint='docker run --rm -i -v ${PWD}:/data ghcr.io/trento-project/tlint:lat
 
 Looking to build TLint from source, run its test suite, or work on the browser-based playground? See:
 
-* link:docs/TLint/README.adoc[docs/TLint] — the `tlint` CLI/library: building, testing, linting, project layout, and the container image.
-* link:docs/TLint%20web/README.adoc[docs/TLint web] — the WebAssembly build and the browser playground at `www/`: building, project layout, and its container image.
+* link:docs/TLint/README.adoc[docs/TLint]: the `tlint` CLI/library: building, testing, linting, project layout, and the container image.
+* link:docs/TLint%20web/README.adoc[docs/TLint web]: the WebAssembly build and the browser playground at `www/`: building, project layout, and its container image.

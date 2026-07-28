@@ -15,7 +15,7 @@ ARG NGINX_VERSION=1.27
 # Compile the wasm bundle
 #
 # We can't use the rust image as is, as "rustc" is already compiled RPM and its std/core metadata is
-# not binary-compatible the upstream rust-std wasm32-unknown-unknown tarball o
+# not binary-compatible with the upstream rust-std wasm32-unknown-unknown tarball.
 # Instead, we need to use rustup to install the requested rust toolchain and wasm target, then install wasm-pack.
 FROM registry.suse.com/bci/bci-base:${BCI_BASE_VERSION} AS builder
 ARG RUST_VERSION
@@ -111,7 +111,6 @@ LABEL org.opensuse.reference="registry.suse.com/suse/nginx:${NGINX_VERSION}"
 LABEL org.openbuildservice.disturl="https://github.com/trento-project/tlint/pkgs/container/tlint-web"
 # endlabelprefix
 LABEL org.opencontainers.image.base.name="registry.suse.com/suse/nginx:${NGINX_VERSION}"
-LABEL org.opencontainers.image.base.digest="latest"
 
 # Run unprivileged
 USER nginx

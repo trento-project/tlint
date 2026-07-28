@@ -74,7 +74,10 @@ fn get_input(file: Option<String>) -> String {
                 eprintln!("Unable to open file '{file_path}': {reason}");
                 process::exit(1);
             });
-            file.read_to_string(&mut payload).expect("Unable to read file");
+            file.read_to_string(&mut payload).unwrap_or_else(|err| {
+                eprintln!("Unable to read file '{file_path}': {err}");
+                process::exit(1);
+            });
         }
         None => {
             io::stdin()

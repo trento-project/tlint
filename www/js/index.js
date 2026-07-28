@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: SUSE LLC
 // SPDX-License-Identifier: Apache-2.0
 
-import {basicSetup, EditorView} from "codemirror"
-import {yaml} from "@codemirror/lang-yaml"
+import { basicSetup, EditorView } from "codemirror"
+import { yaml } from "@codemirror/lang-yaml"
+import { Compartment } from "@codemirror/state"
 
 import Lint from "./lint"
 import example from "./example"
@@ -12,9 +13,14 @@ const SPEC_URL = "https://www.trento-project.io/docs/wanda/specification.html#_a
 
 const replaceContent = (view, content) => {
     view.dispatch({
-        changes: {from: 0, to: view.state.doc.length, insert: content}
+        changes: { from: 0, to: view.state.doc.length, insert: content }
     });
 };
+
+// LocalStorage helpers, with try/catch to avoid errors in private browsing mode
+const readDraft = () => { try { return localStorage.getItem(DRAFT_KEY) || ""; } catch { return ""; } };
+const writeDraft = (content) => { try { localStorage.setItem(DRAFT_KEY, content); } catch { } };
+const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { } };
 
 Lint.then((lib) => {
     document.getElementById("loading").remove();
@@ -28,48 +34,50 @@ Lint.then((lib) => {
     const expandSpec = document.getElementById("expand-spec");
     const specPanel = document.getElementById("spec-panel");
     const specFrame = document.getElementById("spec-frame");
+    const editable = new Compartment();
     expandSpec.href = SPEC_URL;
 
     const editor = document.getElementById("editor");
     const code = new EditorView({
-        doc: localStorage.getItem(DRAFT_KEY) || "",
+        doc: readDraft(),
         extensions: [
             basicSetup,
             yaml(),
+            editable.of(EditorView.editable.of(true)),
             EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
-                    localStorage.setItem(DRAFT_KEY, update.state.doc.toString());
+                    writeDraft(update.state.doc.toString());
                 }
             }),
         ],
         parent: editor
-      })
+    })
 
     submit.addEventListener("click", async (event) => {
-        code.editable = false;
+        code.dispatch({ effects: editable.reconfigure(EditorView.editable.of(false)) });
         submit.disabled = true;
         const result = document.getElementById("result");
         result.className = "pending";
-        result.innerHTML = "Linting...";
+        result.textContent = "Linting...";
         const { result: isValid, messages } = await lib.lint(code.state.doc.toString());
-        result.innerHTML = messages.join("\n");
+        result.textContent = messages.join("\n");
         result.className = isValid ? "ok" : "error";
-        code.editable = true;
+        code.dispatch({ effects: editable.reconfigure(EditorView.editable.of(true)) });
         submit.disabled = false;
     });
 
     reset.addEventListener("click", async (event) => {
         replaceContent(code, "");
-        localStorage.removeItem(DRAFT_KEY);
+        clearDraft();
         submit.disabled = false;
         const result = document.getElementById("result");
         result.className = "";
-        result.innerHTML = "";
+        result.textContent = "";
     });
 
     loadExample.addEventListener("click", async (event) => {
         replaceContent(code, example);
-        localStorage.setItem(DRAFT_KEY, example);
+        writeDraft(example);
     });
 
     openSpec.addEventListener("click", () => {

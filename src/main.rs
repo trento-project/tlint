@@ -80,9 +80,10 @@ fn get_input(file: Option<String>) -> String {
             });
         }
         None => {
-            io::stdin()
-                .read_to_string(&mut payload)
-                .expect("Unable to read from stdin");
+            io::stdin().read_to_string(&mut payload).unwrap_or_else(|err| {
+                eprintln!("Unable to read from stdin: {err}");
+                process::exit(1);
+            });
         }
     }
     payload
@@ -142,8 +143,14 @@ fn print_diagnostic(diagnostic: &ValidationDiagnostic) {
 }
 
 fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i32 {
+    let files = match scan_directory(directory) {
+        Ok(files) => files,
+        Err(error) => {
+            eprintln!("Unable to scan directory '{directory}': {error}");
+            return 1;
+        }
+    };
     let json_schema = validation::get_json_schema();
-    let files = scan_directory(directory).expect("Unable to scan directory");
     let mut parsing_errors = vec![];
     let (_, validation_errors): (Vec<_>, Vec<_>) = files
         .into_iter()
@@ -156,8 +163,13 @@ fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i3
         })
         .map(|check_path| {
             let input = get_input(Some(check_path));
-            let json_value: serde_json::Value = serde_yaml::from_str(&input)
-                .expect("Unable to parse the YAML into a JSON payload");
+            let json_value: serde_json::Value = match serde_yaml::from_str(&input) {
+                Ok(value) => value,
+                Err(error) => {
+                    parsing_errors.push(error.to_string());
+                    return Ok(());
+                }
+            };
             let deserialization_result = serde_yaml::from_str::<Check>(&input);
 
             match deserialization_result {

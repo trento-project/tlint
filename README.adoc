@@ -42,7 +42,7 @@ If you need to, you can opt out of some validation rules via the `+--rule+` opti
 
 == Running TLint as a container image
 
-Currently if you don't want to build TLint yourself the most convenient solution is to run TLint as a container image.
+Currently, if you do not want to build TLint yourself, the most convenient solution is to run TLint as a container image.
 
 You can put this useful alias into your shell configuration:
 

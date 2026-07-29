@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::types::{ValidationDiagnostic, Validator};
+use crate::validators::exclude_validator::ExcludeValidator;
 use crate::validators::expectation_validator::ExpectationValidator;
 use crate::validators::link_validator::LinkValidator;
 use crate::validators::schema_validator::SchemaValidator;
@@ -16,6 +17,7 @@ pub enum EnabledValidator {
     Link,
     Schema,
     Value,
+    Exclude,
 }
 
 const SCHEMA: &str = include_str!("../../wanda/guides/check_definition.schema.json");
@@ -62,6 +64,11 @@ pub fn validate(
         validators.push(&value_validator);
     }
 
+    let exclude_validator = ExcludeValidator { engine };
+    if enabled.contains(&EnabledValidator::Exclude) {
+        validators.push(&exclude_validator);
+    }
+
     let errors: Vec<ValidationDiagnostic> = validators
         .iter()
         .flat_map(|validator| validator.validate(json_check, check_id))
@@ -101,6 +108,7 @@ mod tests {
             EnabledValidator::Link,
             EnabledValidator::Schema,
             EnabledValidator::Value,
+            EnabledValidator::Exclude,
         ]
     }
 

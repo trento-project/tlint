@@ -20,6 +20,7 @@ pub fn validate(
         EnabledValidator::Expectation,
         EnabledValidator::Schema,
         EnabledValidator::Value,
+        EnabledValidator::Exclude,
     ];
     validation::validate(json_check, check_id, &json_schema, engine, &validators)
 }

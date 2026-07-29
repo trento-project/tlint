@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: SUSE LLC
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod exclude_validator;
 pub mod expectation_validator;
 pub mod link_validator;
 pub mod schema_validator;

@@ -17,8 +17,16 @@ struct ValidationResult {
 pub fn lint(content: String) -> JsValue {
     let engine = Engine::new_raw();
 
-    let json_value: serde_json::Value = serde_yaml::from_str(&content)
-        .expect("Unable to parse the YAML into a JSON payload");
+    let json_value: serde_json::Value = match serde_yaml::from_str(&content) {
+        Ok(value) => value,
+        Err(error) => {
+            let r = ValidationResult {
+                result: false,
+                messages: vec![error.to_string()],
+            };
+            return serde_wasm_bindgen::to_value(&r).unwrap();
+        }
+    };
     let deserialization_result = serde_yaml::from_str::<Check>(&content);
 
     let r = match deserialization_result {
@@ -40,7 +48,7 @@ pub fn lint(content: String) -> JsValue {
             let messages = match validation_errors {
                 Err(ref errors) => {
                     errors
-                    .into_iter()
+                    .iter()
                     .map(|diagnostic| {
                         match diagnostic {
                             ValidationDiagnostic::Warning { message, instance_path, ..} => format!("{} - path: {}", message, instance_path),
@@ -56,7 +64,7 @@ pub fn lint(content: String) -> JsValue {
 
             ValidationResult {
                 result: validation_errors.is_ok(),
-                messages: messages
+                messages
             }
         }
     };

@@ -21,5 +21,5 @@ pub fn validate(
         EnabledValidator::Schema,
         EnabledValidator::Value,
     ];
-    validation::validate(&json_check, &check_id, &json_schema, &engine, &validators)
+    validation::validate(json_check, check_id, &json_schema, engine, &validators)
 }

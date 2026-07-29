@@ -8,7 +8,7 @@ pub struct ExcludeValidator<'a> {
     pub engine: &'a Engine,
 }
 
-impl<'a> Validator for ExcludeValidator<'a> {
+impl Validator for ExcludeValidator<'_> {
     fn validate(
         &self,
         json_check: &serde_json::Value,
@@ -30,7 +30,7 @@ fn validate_exclude(
     let Some(exclude_expression) = exclude.as_str() else {
         return vec![ValidationDiagnostic::Critical {
             check_id: check_id.to_string(),
-            message: "exclude must be a string expression".to_string(),
+            message: "Field has to be a string".to_string(),
             instance_path: "/exclude".to_string(),
         }];
     };
@@ -237,7 +237,7 @@ mod tests {
                 instance_path,
             } => {
                 assert_eq!(check_id, "156F64");
-                assert_eq!(message, "exclude must be a string expression");
+                assert_eq!(message, "Field has to be a string");
                 assert_eq!(instance_path, "/exclude");
             }
         }

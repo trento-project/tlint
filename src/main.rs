@@ -27,6 +27,7 @@ enum ArgValidator {
     Link,
     Schema,
     Value,
+    Exclude,
 }
 
 impl From<ArgValidator> for Option<EnabledValidator> {
@@ -37,6 +38,7 @@ impl From<ArgValidator> for Option<EnabledValidator> {
             ArgValidator::Link => Some(EnabledValidator::Link),
             ArgValidator::Schema => Some(EnabledValidator::Schema),
             ArgValidator::Value => Some(EnabledValidator::Value),
+            ArgValidator::Exclude => Some(EnabledValidator::Exclude),
         }
     }
 }
@@ -112,6 +114,7 @@ fn normalize_rules(rules: &[ArgValidator]) -> Vec<EnabledValidator> {
             EnabledValidator::Link,
             EnabledValidator::Schema,
             EnabledValidator::Value,
+            EnabledValidator::Exclude,
         ]
     } else {
         rules

@@ -11,16 +11,16 @@ module.exports = {
   entry: "./js/bootstrap.js",
   output: {
     path: dist,
-    filename: "main.js",
+    filename: "[name].js",
     globalObject: "this",
   },
   devServer: {
     static: dist,
   },
   plugins: [
-    new CopyPlugin([
-      path.resolve(__dirname, "static")
-    ]),
+    new CopyPlugin({
+      patterns: [{ from: path.resolve(__dirname, "static") }],
+    }),
     new CleanWebpackPlugin(),
   ],
   experiments: {
@@ -29,7 +29,7 @@ module.exports = {
   optimization: {
     minimize: true,
     splitChunks: {
-        chunks: 'all',
+        chunks: 'async',
     },
   },
 };

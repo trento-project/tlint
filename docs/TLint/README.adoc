@@ -6,7 +6,7 @@ Developer guide for the `tlint` command-line tool. For end-user usage (installin
 
 * A Rust toolchain. Install it with https://rustup.rs[rustup]. The version CI builds against is pinned in link:../../.tool-versions[`.tool-versions`]; anything reasonably close will work for local development since the crate has no unstable-feature dependencies.
 * No other native dependencies are required to build the CLI on its own. (The optional link validator pulls in `lychee-lib`, which brings a TLS stack, but that is handled entirely by Cargo.)
-* The `wanda` git submodule, used only to source the check JSON Schema (see <<the-check-schema>> below). Clone with submodules, or if you already cloned without them, run the following command:
+* The `wanda` git submodule, used only to source the check JSON Schema (see <<the-check-schema>>). Clone with submodules, or if you already cloned without them, run the following command:
 +
 [source,sh]
 ----
@@ -30,8 +30,7 @@ cat tests/fixtures/check.yml | cargo run -- lint
 cargo run -- show tests/fixtures/check.yml
 ----
 
-`lint` runs the validators described below and prints one line per diagnostic. `show` parses a check and pretty-prints its id, group, description, remediation and facts, useful for verifying that a check deserializes as expected.
-
+`lint` runs validators and prints one line per diagnostic. `show` parses a check and pretty-prints its id, group, description, remediation and facts, useful for verifying that a check deserializes as expected.
 Both subcommands accept an optional positional file argument; without one, they read from stdin until EOF.
 
 The `lint` subcommand also accepts `--rule <name>` (repeatable) to run only a subset of validators, `expectation`, `exclude`, `link`, `schema`, `value`, or `all` (the default). This is useful when iterating on a check and you want to skip the (network-dependent, slower) link validator.

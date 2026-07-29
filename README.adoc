@@ -7,7 +7,7 @@ Validation engine for Trento Checks DSL.
 [source,sh]
 ----
 $ tlint -h
-tlint 0.9.4
+tlint 0.9.5
 
 USAGE:
     tlint <SUBCOMMAND>
@@ -30,8 +30,7 @@ $ cat check.yml | target/debug/tlint lint
   156F64   - expectations - List must not be empty
 ----
 
-Or you can use the positional argument to directly let TLint pick a
-file.
+Or you can use the positional argument to directly let TLint pick a file.
 
 [source,sh]
 ----
@@ -39,14 +38,11 @@ $ tlint lint check.yml
   156F64   - expectations - List must not be empty
 ----
 
-If you need to, you can opt out of some validation rules via the
-`+--rule+` option. This can be useful when you want to skip the link
-validation.
+If you need to, you can opt out of some validation rules via the `+--rule+` option. This can be useful when you want to skip the link validation.
 
-== Running TLint over Docker
+== Running TLint as a container image
 
-Currently if you don’t want to build TLint yourself the most convenient
-solution is to run TLint over Docker.
+Currently if you don't want to build TLint yourself the most convenient solution is to run TLint as a container image.
 
 You can put this useful alias into your shell configuration:
 
@@ -54,3 +50,10 @@ You can put this useful alias into your shell configuration:
 ----
 alias tlint='docker run --rm -i -v ${PWD}:/data ghcr.io/trento-project/tlint:latest'
 ----
+
+== Development
+
+Looking to build TLint from source, run its test suite, or work on the browser-based playground? See:
+
+* link:docs/TLint/README.adoc[docs/TLint]: the `tlint` CLI/library: building, testing, linting, project layout, and the container image.
+* link:docs/TLint%20web/README.adoc[docs/TLint web]: the WebAssembly build and the browser playground at `www/`: building, project layout, and its container image.

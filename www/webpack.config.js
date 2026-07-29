@@ -3,7 +3,6 @@
 
 const path = require("path");
 const CopyPlugin = require("copy-webpack-plugin");
-const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const dist = path.resolve(__dirname, "dist");
 
 module.exports = {
@@ -13,15 +12,17 @@ module.exports = {
     path: dist,
     filename: "[name].js",
     globalObject: "this",
+    clean: true,
   },
   devServer: {
     static: dist,
   },
   plugins: [
     new CopyPlugin({
-      patterns: [{ from: path.resolve(__dirname, "static") }],
+      patterns: [
+        { from: path.resolve(__dirname, "static"), to: dist },
+      ],
     }),
-    new CleanWebpackPlugin(),
   ],
   experiments: {
     asyncWebAssembly: true,
@@ -29,7 +30,7 @@ module.exports = {
   optimization: {
     minimize: true,
     splitChunks: {
-        chunks: 'async',
+      chunks: 'async',
     },
   },
 };

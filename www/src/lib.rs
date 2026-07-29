@@ -13,6 +13,11 @@ struct ValidationResult {
     pub messages: Vec<String>
 }
 
+#[wasm_bindgen(start)]
+pub fn init() {
+    console_error_panic_hook::set_once();
+}
+
 #[wasm_bindgen]
 pub fn lint(content: String) -> JsValue {
     let engine = Engine::new_raw();

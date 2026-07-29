@@ -10,7 +10,7 @@ module.exports = {
   entry: "./js/bootstrap.js",
   output: {
     path: dist,
-    filename: "main.js",
+    filename: "[name].js",
     globalObject: "this",
     clean: true,
   },

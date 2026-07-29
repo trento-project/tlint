@@ -1,31 +1,118 @@
 # SPDX-FileCopyrightText: SUSE LLC
 # SPDX-License-Identifier: Apache-2.0
 
-# Configure rustup-less wasm
-# https://rustwasm.github.io/wasm-pack/book/prerequisites/non-rustup-setups.html
-FROM opensuse/tumbleweed AS wasm-setup
-WORKDIR /wasm
-RUN zypper -n in wget tar
-RUN wget https://static.rust-lang.org/dist/rust-std-1.82.0-wasm32-unknown-unknown.tar.gz -O wasm32.tar.gz
-RUN tar -xf wasm32.tar.gz -C /wasm
+# https://registry.suse.com/repositories/bci-bci-base-15sp7
+ARG BCI_BASE_VERSION=15.7
+# https://rust-lang.github.io/rustup/concepts/toolchains.html
+ARG RUST_VERSION=1.96.1
+# https://github.com/wasm-bindgen/wasm-pack/releases
+ARG WASM_PACK_VERSION=0.15.0
+# https://registry.suse.com/repositories/bci-nodejs24
+ARG NODE_VERSION=24
+# https://registry.suse.com/repositories/suse-nginx
+ARG NGINX_VERSION=1.27
 
-# FROM registry.suse.com/bci/rust:1.82 AS builder
-# Using suse bci rust image breaks the compilation as for some reason the
-# rust code of tlint and wasm are of different versions (even though they print even the same sha...)
-FROM rust:1.88 AS builder
-COPY --from=wasm-setup /wasm/rust-std-1.82.0-wasm32-unknown-unknown/rust-std-wasm32-unknown-unknown/lib/rustlib /usr/lib/rustlib
-RUN cargo install wasm-pack@0.13.1
+# Compile the wasm bundle
+#
+# We can't use the rust image as is, as "rustc" is already compiled RPM and its std/core metadata is
+# not binary-compatible with the upstream rust-std wasm32-unknown-unknown tarball.
+# Instead, we need to use rustup to install the requested rust toolchain and wasm target, then install wasm-pack.
+FROM registry.suse.com/bci/bci-base:${BCI_BASE_VERSION} AS builder
+ARG RUST_VERSION
+ARG WASM_PACK_VERSION
+
+# Install rustup and wasm-pack, then build the wasm bundle
+RUN set -euo pipefail; \
+    zypper -n in --no-recommends rustup gcc libopenssl-devel pkg-config && \
+    zypper clean -a
+# Set up rustup and cargo in a way that works for both root and non-root users
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+# Install the requested rust toolchain and wasm target, then install wasm-pack
+RUN rustup toolchain install ${RUST_VERSION} && \
+    rustup default ${RUST_VERSION} && \
+    rustup target add wasm32-unknown-unknown
+
+# Install wasm-pack, compatible with the rust toolchain version above
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    cargo install --root /usr/local wasm-pack@${WASM_PACK_VERSION}
+
 WORKDIR /home/tlint/
-COPY . .
-WORKDIR /home/tlint/www
-RUN wasm-pack build
 
-FROM registry.suse.com/bci/nodejs:20 AS assets
-COPY --from=builder /home/tlint/www /home/tlint/www
+# Copy all the tlint-wasm (www/) dependencies first, so that they can be compiled and cached
+COPY Cargo.toml Cargo.lock ./
+COPY www/Cargo.toml www/Cargo.lock ./www/
+RUN mkdir -p src www/src && \
+    printf '' > src/lib.rs && \
+    printf '' > www/src/lib.rs
+
+WORKDIR /home/tlint/www
+
+# Compile dependencies for the wasm32 target and cache it
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/home/tlint/www/target \
+    cargo build --release --target wasm32-unknown-unknown
+
+WORKDIR /home/tlint/
+
+# Only copy the Rust sources tlint-wasm actually needs to compile
+COPY src ./src
+COPY wanda/guides/check_definition.schema.json ./wanda/guides/check_definition.schema.json
+COPY www/src ./www/src
+
+WORKDIR /home/tlint/www
+
+# Build the wasm package with the cached dependencies
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/home/tlint/www/target \
+    touch ../src/lib.rs src/lib.rs && \
+    wasm-pack build
+
+FROM registry.suse.com/bci/nodejs:${NODE_VERSION} AS assets
+
 WORKDIR /home/tlint/www/
+
+# Install npm dependencies
+COPY www/package.json www/package-lock.json ./
+COPY --from=builder /home/tlint/www/pkg ./pkg
 RUN npm install
+
+# Copy frontend sources only, to avoid invalidating cache
+COPY www/js ./js
+COPY www/static ./static
+COPY www/webpack.config.js ./
+
 ENV NODE_ENV="production"
+
+# Build the static assets with webpack, using the wasm package built above
 RUN npm run build
 
-FROM nginx:alpine
-COPY --from=assets /home/tlint/www/dist/* /usr/share/nginx/html
+FROM registry.suse.com/suse/nginx:${NGINX_VERSION}
+
+ARG NGINX_VERSION
+
+# Copy the built static assets from the assets stage into the nginx document root
+COPY --from=assets /home/tlint/www/dist/* /srv/www/htdocs
+
+# Define labels according to https://en.opensuse.org/Building_derived_containers
+# labelprefix=com.suse.trento
+LABEL org.opencontainers.image.authors="https://github.com/trento-project/tlint/graphs/contributors"
+LABEL org.opencontainers.image.title="TLint Web"
+LABEL org.opencontainers.image.description="Web playground for the Trento Checks DSL linter"
+LABEL org.opencontainers.image.documentation="https://www.trento-project.io/docs/tlint/README.html"
+LABEL org.opencontainers.image.version="devel"
+LABEL org.opencontainers.image.url="https://github.com/trento-project/tlint"
+# LABEL org.opencontainers.image.created="" # Set by GHA, no need to set here
+LABEL org.opencontainers.image.vendor="SUSE LLC"
+LABEL org.opencontainers.image.source="https://github.com/trento-project/tlint"
+LABEL org.opencontainers.image.ref.name="${NGINX_VERSION}-devel"
+LABEL org.opensuse.reference="registry.suse.com/suse/nginx:${NGINX_VERSION}"
+LABEL org.openbuildservice.disturl="https://github.com/trento-project/tlint/pkgs/container/tlint-web"
+# endlabelprefix
+LABEL org.opencontainers.image.base.name="registry.suse.com/suse/nginx:${NGINX_VERSION}"
+
+# Run unprivileged
+USER nginx
+
+EXPOSE 8080

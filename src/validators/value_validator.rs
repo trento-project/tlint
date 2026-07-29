@@ -9,7 +9,7 @@ pub struct ValueValidator<'a> {
     pub engine: &'a Engine,
 }
 
-impl<'a> Validator for ValueValidator<'a> {
+impl Validator for ValueValidator<'_> {
     fn validate(
         &self,
         json_check: &serde_json::Value,
@@ -62,10 +62,10 @@ fn validate_values(
         })
         .partition(Result::is_ok);
 
-    return values_expression_errors
+    values_expression_errors
         .into_iter()
         .map(Result::unwrap_err)
-        .collect();
+        .collect()
 }
 
 #[cfg(test)]

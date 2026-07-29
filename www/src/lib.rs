@@ -53,7 +53,7 @@ pub fn lint(content: String) -> JsValue {
             let messages = match validation_errors {
                 Err(ref errors) => {
                     errors
-                    .into_iter()
+                    .iter()
                     .map(|diagnostic| {
                         match diagnostic {
                             ValidationDiagnostic::Warning { message, instance_path, ..} => format!("{} - path: {}", message, instance_path),
@@ -69,7 +69,7 @@ pub fn lint(content: String) -> JsValue {
 
             ValidationResult {
                 result: validation_errors.is_ok(),
-                messages: messages
+                messages
             }
         }
     };

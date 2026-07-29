@@ -24,12 +24,13 @@ fn collect_deprecations(
 
     evaluation
         .iter_annotations()
-        .filter(|annotation| match annotation.annotations.value().get("deprecated") {
-            Some(val) => match val.as_bool() {
-                Some(is_deprecated) => is_deprecated,
-                None => false,
-            },
-            None => false,
+        .filter(|annotation| {
+            annotation
+                .annotations
+                .value()
+                .get("deprecated")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or_default()
         })
         .map(|annotation| {
             let err_description = match annotation.instance_location.iter().last() {
@@ -49,7 +50,7 @@ fn collect_deprecations(
         .collect::<Vec<_>>()
 }
 
-impl<'a> Validator for SchemaValidator<'a> {
+impl Validator for SchemaValidator<'_> {
     fn validate(
         &self,
         json_check: &serde_json::Value,

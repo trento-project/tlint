@@ -9,7 +9,7 @@ pub struct ExpectationValidator<'a> {
     pub engine: &'a Engine,
 }
 
-impl<'a> Validator for ExpectationValidator<'a> {
+impl Validator for ExpectationValidator<'_> {
     fn validate(
         &self,
         json_check: &serde_json::Value,
@@ -41,14 +41,14 @@ fn validate_string_expression(
                 Stmt::Expr(expression) => match **expression {
                     Expr::StringConstant(_, _) => Ok(()),
                     Expr::InterpolatedString(_, _) => {
-                        if !allow_interpolated_strings {
+                        if allow_interpolated_strings {
+                            Ok(())
+                        } else {
                             Err(ValidationDiagnostic::Critical {
                                 check_id: check_id.to_string(),
                                 message: "String interpolation is not allowed here".to_string(),
                                 instance_path: format!("/expectations/{index:?}").to_string(),
                             })
-                        } else {
-                            Ok(())
                         }
                     }
                     _ => Err(ValidationDiagnostic::Critical {
@@ -143,8 +143,8 @@ fn validate_expectations(
             let failure_message = value.get("failure_message");
             let warning_message = value.get("warning_message");
 
-            if failure_message.is_some() {
-                let failure_message_expression = failure_message.unwrap().as_str().unwrap();
+            if let Some(failure_message) = failure_message {
+                let failure_message_expression = failure_message.as_str().unwrap();
                 results.push(validate_string_expression(
                     failure_message_expression,
                     engine,
@@ -184,10 +184,10 @@ fn validate_expectations(
         })
         .partition(Result::is_ok);
 
-    return expectation_expression_errors
+    expectation_expression_errors
         .into_iter()
         .map(Result::unwrap_err)
-        .collect();
+        .collect()
 }
 
 #[cfg(test)]

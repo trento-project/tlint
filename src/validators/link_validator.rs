@@ -23,7 +23,7 @@ impl Validator for LinkValidator {
         let extractor = Extractor::default();
         let remediation = json_check
             .get("remediation")
-            .map_or_else(|| String::new(), |v| v.to_string())
+            .map_or_else(String::new, std::string::ToString::to_string)
             .replace("\\n", " ")
             .replace("\\r", " ")
             .replace("\\t", " ");
@@ -32,14 +32,14 @@ impl Validator for LinkValidator {
 
         let description = json_check
             .get("description")
-            .map_or_else(|| String::new(), |v| v.to_string())
+            .map_or_else(String::new, std::string::ToString::to_string)
             .replace("\\n", " ")
             .replace("\\r", " ")
             .replace("\\t", " ");
         let content = InputContent::from_string(&description, FileType::Markdown);
         let description_links = extractor.extract(&content);
 
-        let links = vec![remediation_links, description_links].concat();
+        let links = [remediation_links, description_links].concat();
 
         let link_check = smol::block_on(Compat::new(async {
             let mut checked = Vec::<Result<Response, ErrorKind>>::new();
@@ -58,7 +58,7 @@ impl Validator for LinkValidator {
             match link_check {
                 Err(e) => diagnostics.push(ValidationDiagnostic::Critical {
                     check_id: check_id.to_string(),
-                    message: format!("Failed to validate link in check: {}", e.to_string()),
+                    message: format!("Failed to validate link in check: {e}"),
                     instance_path: "N/A".to_owned(),
                 }),
                 Ok(r) => {
@@ -73,20 +73,20 @@ impl Validator for LinkValidator {
                             check_id: check_id.to_string(),
                             message: format!(
                                 "Invalid link ({}): {}",
-                                r.source().to_string(),
+                                r.source(),
                                 details
                             ),
                             instance_path: "N/A".to_owned(),
                         });
                     }
                 }
-            };
+            }
         }
 
         diagnostics
     }
 
-    #[cfg(any(target_arch = "wasm32"))]
+    #[cfg(target_arch = "wasm32")]
     fn validate(
         &self,
         json_check: &serde_json::Value,

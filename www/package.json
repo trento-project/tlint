@@ -1,6 +1,6 @@
 {
   "name": "tlint-web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "tlint web",
   "main": "index.js",
   "private": true,
@@ -17,8 +17,8 @@
   },
   "devDependencies": {
     "copy-webpack-plugin": "^14.0.0",
-    "webpack": "^5.109.1",
-    "webpack-cli": "^7.2.1",
+    "webpack": "^5.109.2",
+    "webpack-cli": "^7.2.2",
     "webpack-dev-server": "^6.0.0"
   }
 }

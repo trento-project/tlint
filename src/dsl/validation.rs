@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::types::{ValidationDiagnostic, Validator};
+use crate::validators::exclude_validator::ExcludeValidator;
 use crate::validators::expectation_validator::ExpectationValidator;
 use crate::validators::link_validator::LinkValidator;
 use crate::validators::schema_validator::SchemaValidator;
 use crate::validators::value_validator::ValueValidator;
-use crate::validators::exclude_validator::ExcludeValidator;
 use colored::Colorize;
 use jsonschema::{Draft, Validator as JsonSchemaValidator};
 use rhai::Engine;

@@ -24,6 +24,15 @@ fn validates_incorrect_check() -> Result<(), Box<dyn std::error::Error>> {
         "  Parse error   - missing field `id` at line 2 column 1\n",
     ));
 
+    let mut cmd = Command::cargo_bin("tlint")?;
+
+    cmd.arg("lint").arg("tests/fixtures");
+    cmd.assert().failure().stdout(
+        predicate::str::contains("Parse error")
+            .and(predicate::str::contains("invalid_check.yml"))
+            .and(predicate::str::contains("missing field `id`")),
+    );
+
     Ok(())
 }
 

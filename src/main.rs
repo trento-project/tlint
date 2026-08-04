@@ -154,7 +154,7 @@ fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i3
         }
     };
     let json_schema = validation::get_json_schema();
-    let mut parsing_errors = vec![];
+    let mut parsing_errors: Vec<(String, String)> = vec![];
     let (_, validation_errors): (Vec<_>, Vec<_>) = files
         .into_iter()
         .filter(|check_path| {
@@ -165,11 +165,11 @@ fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i3
             }
         })
         .map(|check_path| {
-            let input = get_input(Some(check_path));
+            let input = get_input(Some(check_path.clone()));
             let json_value: serde_json::Value = match serde_yaml::from_str(&input) {
                 Ok(value) => value,
                 Err(error) => {
-                    parsing_errors.push(error.to_string());
+                    parsing_errors.push((check_path, error.to_string()));
                     return Ok(());
                 }
             };
@@ -177,7 +177,7 @@ fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i3
 
             match deserialization_result {
                 Err(ref error) => {
-                    parsing_errors.push(error.to_string());
+                    parsing_errors.push((check_path, error.to_string()));
                     Ok(())
                 }
                 Ok(check) => {
@@ -198,8 +198,12 @@ fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i3
 
     let exit_code = i32::from(!(parsing_errors.is_empty() && validation_errors.is_empty()));
 
-    for error in parsing_errors {
-        println!("{} - {}", validation::error_header("Parse error"), error);
+    for (check_path, error) in parsing_errors {
+        println!(
+            "{} Parse error - {}",
+            validation::error_header(&check_path),
+            error
+        );
     }
 
     for diagnostic in validation_errors.into_iter().flat_map(Result::unwrap_err) {

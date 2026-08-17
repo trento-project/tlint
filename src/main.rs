@@ -242,21 +242,24 @@ fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i3
     exit_code
 }
 
-fn lint_file(
-    file: Option<String>,
-    rule: &[ArgValidator],
-    engine: &Engine,
-) -> Result<i32, serde_yaml::Error> {
+fn lint_file(file: Option<String>, rule: &[ArgValidator], engine: &Engine) -> i32 {
     let file_path = file.clone();
     let input = get_input(file);
-    let json_value: serde_json::Value = serde_yaml::from_str(&input)?;
+    let json_value: serde_json::Value = match serde_yaml::from_str(&input) {
+        Ok(value) => value,
+        Err(error) => {
+            let header = parse_error_header(None, file_path.as_deref());
+            println!("{} - {error}", validation::error_header(&header));
+            return 1;
+        }
+    };
     let deserialization_result = serde_yaml::from_str::<Check>(&input);
 
     if let Err(ref error) = deserialization_result {
         let check_id = extract_check_id(&json_value);
         let header = parse_error_header(check_id, file_path.as_deref());
         println!("{} - {error}", validation::error_header(&header));
-        return Ok(1);
+        return 1;
     }
 
     let check = deserialization_result.unwrap();
@@ -266,7 +269,7 @@ fn lint_file(
     let validation_result =
         validation::validate(&json_value, &check_id, &json_schema, engine, &normalized_rules);
 
-    let exit_code = match validation_result {
+    match validation_result {
         Ok(()) => 0,
         Err(validation_errors) => {
             for diagnostic in &validation_errors {
@@ -274,9 +277,7 @@ fn lint_file(
             }
             1
         }
-    };
-
-    Ok(exit_code)
+    }
 }
 
 fn main() -> Result<(), serde_yaml::Error> {
@@ -288,7 +289,7 @@ fn main() -> Result<(), serde_yaml::Error> {
             let exit_code = if is_directory(file.clone()) {
                 file.map_or(0, |directory| lint_directory(&directory, &rule, &engine))
             } else {
-                lint_file(file, &rule, &engine)?
+                lint_file(file, &rule, &engine)
             };
             process::exit(exit_code);
         }

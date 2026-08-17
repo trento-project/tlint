@@ -42,6 +42,20 @@ fn validates_incorrect_check() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn validates_incorrect_check_with_recoverable_id() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("tlint")?;
+
+    cmd.arg("lint")
+        .arg("tests/fixtures/missing_field.yml");
+    cmd.assert().failure().stdout(
+        predicate::str::contains("Parse error 156F64 (tests/fixtures/missing_field.yml)")
+            .and(predicate::str::contains("missing field `description`")),
+    );
+
+    Ok(())
+}
+
+#[test]
 fn validates_deprecated_check() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("tlint")?;
 

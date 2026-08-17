@@ -124,23 +124,48 @@ fn normalize_rules(rules: &[ArgValidator]) -> Vec<EnabledValidator> {
     }
 }
 
-fn print_diagnostic(diagnostic: &ValidationDiagnostic) {
+fn with_path(label: &str, check_path: Option<&str>) -> String {
+    match check_path {
+        Some(path) => format!("{label} ({path})"),
+        None => label.to_string(),
+    }
+}
+
+fn diagnostic_header(check_id: &str, check_path: Option<&str>) -> String {
+    with_path(check_id, check_path)
+}
+
+fn extract_check_id(json_value: &serde_json::Value) -> Option<&str> {
+    json_value.get("id").and_then(serde_json::Value::as_str)
+}
+
+fn parse_error_header(check_id: Option<&str>, check_path: Option<&str>) -> String {
+    let label = match check_id {
+        Some(id) => format!("Parse error {id}"),
+        None => "Parse error".to_string(),
+    };
+    with_path(&label, check_path)
+}
+
+fn print_diagnostic(diagnostic: &ValidationDiagnostic, check_path: Option<&str>) {
     match diagnostic {
         ValidationDiagnostic::Warning {
             check_id,
             message,
             instance_path,
         } => {
-            println!("{} - {}", validation::warning_header(check_id), message);
-            println!("  path: {instance_path}\n");
+            let header = diagnostic_header(check_id, check_path);
+            println!("{} - {message}", validation::warning_header(&header));
+            println!("{}\n", validation::instance_path_line(instance_path));
         }
         ValidationDiagnostic::Critical {
             check_id,
             message,
             instance_path,
         } => {
-            println!("{} - {}", validation::error_header(check_id), message);
-            println!("  path: {instance_path}\n");
+            let header = diagnostic_header(check_id, check_path);
+            println!("{} - {message}", validation::error_header(&header));
+            println!("{}\n", validation::instance_path_line(instance_path));
         }
     }
 }
@@ -154,8 +179,10 @@ fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i3
         }
     };
     let json_schema = validation::get_json_schema();
-    let mut parsing_errors: Vec<(String, String)> = vec![];
-    let (_, validation_errors): (Vec<_>, Vec<_>) = files
+    let mut parsing_errors: Vec<(String, Option<String>, String)> = vec![];
+    let mut diagnostics_by_file: Vec<(String, Vec<ValidationDiagnostic>)> = vec![];
+
+    files
         .into_iter()
         .filter(|check_path| {
             let extension = Path::new(check_path).extension();
@@ -164,50 +191,52 @@ fn lint_directory(directory: &str, rule: &[ArgValidator], engine: &Engine) -> i3
                 None => false,
             }
         })
-        .map(|check_path| {
+        .for_each(|check_path| {
             let input = get_input(Some(check_path.clone()));
             let json_value: serde_json::Value = match serde_yaml::from_str(&input) {
                 Ok(value) => value,
                 Err(error) => {
-                    parsing_errors.push((check_path, error.to_string()));
-                    return Ok(());
+                    parsing_errors.push((check_path, None, error.to_string()));
+                    return;
                 }
             };
             let deserialization_result = serde_yaml::from_str::<Check>(&input);
 
             match deserialization_result {
                 Err(ref error) => {
-                    parsing_errors.push((check_path, error.to_string()));
-                    Ok(())
+                    let check_id = extract_check_id(&json_value).map(String::from);
+                    parsing_errors.push((check_path, check_id, error.to_string()));
                 }
                 Ok(check) => {
                     let check_id = check.id;
                     let normalized_rules = normalize_rules(rule);
 
-                    validation::validate(
+                    if let Err(diagnostics) = validation::validate(
                         &json_value,
                         &check_id,
                         &json_schema,
                         engine,
                         &normalized_rules,
-                    )
+                    ) {
+                        diagnostics_by_file.push((check_path, diagnostics));
+                    }
                 }
             }
-        })
-        .partition(Result::is_ok);
+        });
 
-    let exit_code = i32::from(!(parsing_errors.is_empty() && validation_errors.is_empty()));
+    let exit_code = i32::from(!(parsing_errors.is_empty() && diagnostics_by_file.is_empty()));
 
-    for (check_path, error) in parsing_errors {
+    for (check_path, check_id, error) in parsing_errors {
         println!(
-            "{} Parse error - {}",
-            validation::error_header(&check_path),
-            error
+            "{} - {error}",
+            validation::error_header(&parse_error_header(check_id.as_deref(), Some(&check_path)))
         );
     }
 
-    for diagnostic in validation_errors.into_iter().flat_map(Result::unwrap_err) {
-        print_diagnostic(&diagnostic);
+    for (check_path, diagnostics) in diagnostics_by_file {
+        for diagnostic in diagnostics {
+            print_diagnostic(&diagnostic, Some(&check_path));
+        }
     }
 
     exit_code
@@ -218,12 +247,15 @@ fn lint_file(
     rule: &[ArgValidator],
     engine: &Engine,
 ) -> Result<i32, serde_yaml::Error> {
+    let file_path = file.clone();
     let input = get_input(file);
     let json_value: serde_json::Value = serde_yaml::from_str(&input)?;
     let deserialization_result = serde_yaml::from_str::<Check>(&input);
 
     if let Err(ref error) = deserialization_result {
-        println!("{} - {}", validation::error_header("Parse error"), error);
+        let check_id = extract_check_id(&json_value);
+        let header = parse_error_header(check_id, file_path.as_deref());
+        println!("{} - {error}", validation::error_header(&header));
         return Ok(1);
     }
 
@@ -238,7 +270,7 @@ fn lint_file(
         Ok(()) => 0,
         Err(validation_errors) => {
             for diagnostic in &validation_errors {
-                print_diagnostic(diagnostic);
+                print_diagnostic(diagnostic, file_path.as_deref());
             }
             1
         }

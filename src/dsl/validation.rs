@@ -32,6 +32,11 @@ pub fn warning_header(head: &str) -> String {
     format!("  {head}  ").on_yellow().black().to_string()
 }
 
+#[must_use]
+pub fn instance_path_line(instance_path: &str) -> String {
+    format!("    path: {instance_path}")
+}
+
 /// # Errors
 ///
 /// Returns the collected [`ValidationDiagnostic`]s if any enabled validator finds a problem.
@@ -353,7 +358,7 @@ mod tests {
                     when: env.provider == "gcp"
             expectations:
               - name: timeout
-                expect: facts.corosync_token_timeout == values.expected_token_timeout 
+                expect: facts.corosync_token_timeout == values.expected_token_timeout
         "#;
 
         let engine = Engine::new();

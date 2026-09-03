@@ -24,3 +24,5 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 14
+    ignore:
+      - dependency-name: "tlint"

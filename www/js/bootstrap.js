@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: SUSE LLC
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // A dependency graph that contains any wasm must all be imported
 // asynchronously. This `bootstrap.js` file does the single async import, so

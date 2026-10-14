@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: SUSE LLC
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 // Synthetic example check. See the anatomy guide:
 // https://www.trento-project.io/docs/wanda/specification.html#_anatomy_of_a_check

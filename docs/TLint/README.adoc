@@ -58,7 +58,7 @@ CI runs `cargo clippy` (mandatory, see `.github/workflows/rust.yml`) and checks 
 [source,rust]
 ----
 // SPDX-FileCopyrightText: SUSE LLC
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-or-later
 ----
 
 For non-Rust files, use the equivalent comment syntax. See existing `.yml`, `.adoc`, and `Dockerfile` files for examples.
